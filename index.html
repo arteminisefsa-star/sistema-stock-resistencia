@@ -27,10 +27,7 @@
         <button class="nav-button" data-view="muebles" data-short="Stock">Stock muebles</button>
         <button class="nav-button" data-view="materiales" data-short="Materiales">Materiales</button>
         <button class="nav-button" data-view="choferes" data-short="Choferes">Choferes</button>
-        <button class="nav-button" data-view="salidas" data-short="Salidas">Salida chofer</button>
-        <button class="nav-button" data-view="rendicion" data-short="Cierre">Cierre / rendicion</button>
-        <button class="nav-button" data-view="ventas" data-short="Ventas">Ventas y devoluciones</button>
-        <button class="nav-button" data-view="dinero" data-short="Dinero">Dinero recibido</button>
+        <button class="nav-button" data-view="viajes" data-short="Viajes">Viajes</button>
         <button class="nav-button" data-view="movimientos" data-short="Movs.">Movimientos</button>
       </nav>
     </aside>
@@ -174,6 +171,61 @@
             <input id="driverSearch" placeholder="Filtrar por nombre" />
           </div>
           <div id="driverCards" class="cards"></div>
+        </div>
+      </section>
+
+      <section id="viajes" class="view">
+        <form id="tripForm" class="panel">
+          <div class="panel-title"><h3>Nueva salida</h3></div>
+          <div class="form-grid">
+            <label>Fecha <input required id="tripDate" type="date" /></label>
+            <label>Chofer <select required id="tripDriver"></select></label>
+            <label>Observacion <input id="tripNote" placeholder="Opcional" /></label>
+          </div>
+          <div class="line-editor">
+            <select id="tripFurniture"></select>
+            <input id="tripQty" type="number" min="1" step="1" placeholder="Cantidad que lleva" />
+            <button class="ghost" type="button" id="addTripLine">Agregar</button>
+          </div>
+          <div id="tripLines" class="chips"></div>
+          <div class="form-actions">
+            <strong>Total que lleva: <span id="tripTotal">$0</span></strong>
+            <button class="primary" type="submit">Guardar salida</button>
+          </div>
+        </form>
+
+        <form id="tripCloseForm" class="panel">
+          <div class="panel-title"><h3>Cerrar viaje</h3></div>
+          <div class="form-grid">
+            <label>Fecha <input required id="tripCloseDate" type="date" /></label>
+            <label>Salida pendiente <select required id="tripCloseLoad"></select></label>
+            <label>Tipo de cobro
+              <select id="tripPaymentMode">
+                <option value="contado">Contado</option>
+                <option value="credito_sena">Credito con sena</option>
+                <option value="credito_sin_sena">Credito sin sena</option>
+              </select>
+            </label>
+          </div>
+          <div id="tripReturnRows" class="return-list"></div>
+          <div class="form-grid">
+            <label>Efectivo entregado <input id="tripCash" type="number" min="0" step="0.01" value="0" /></label>
+            <label>Transferencia entregada <input id="tripTransfer" type="number" min="0" step="0.01" value="0" /></label>
+          </div>
+          <div class="settlement-total trip-result">
+            <span>Total vendido</span><strong id="tripSoldTotal">$0</strong>
+            <span>Entrego ahora</span><strong id="tripPaidTotal">$0</strong>
+            <span>Pendiente</span><strong id="tripPendingTotal">$0</strong>
+          </div>
+          <div class="settlement-note" id="tripCloseNote"></div>
+          <div class="form-actions">
+            <button class="primary" type="submit">Cerrar viaje</button>
+          </div>
+        </form>
+
+        <div class="panel">
+          <div class="panel-title"><h3>Viajes</h3></div>
+          <div id="tripCards" class="cards"></div>
         </div>
       </section>
 

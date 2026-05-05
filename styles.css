@@ -437,6 +437,51 @@ tr:last-child td {
   line-height: 1.45;
 }
 
+.return-list {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.return-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 180px 170px;
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafb;
+}
+
+.return-row span,
+.trip-card p {
+  display: block;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.return-result {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+}
+
+.return-result strong {
+  font-size: 18px;
+}
+
+.trip-result {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 14px;
+}
+
+.trip-result span {
+  margin-top: 0;
+}
+
 .chips {
   display: flex;
   gap: 8px;
@@ -734,6 +779,36 @@ tr:last-child td {
 
   .settlement-total {
     min-width: 0;
+  }
+
+  .return-list {
+    gap: 8px;
+    margin: 10px 0;
+  }
+
+  .return-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .return-row span,
+  .trip-card p {
+    font-size: 12px;
+  }
+
+  .return-result {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    text-align: left;
+  }
+
+  .return-result strong {
+    font-size: 16px;
+  }
+
+  .trip-result {
+    grid-template-columns: 1fr;
   }
 
   .cards {

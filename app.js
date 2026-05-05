@@ -21,6 +21,7 @@ const initialState = {
 
 let state = loadLocalState();
 let currentLoadLines = [];
+let currentTripLines = [];
 let booting = true;
 let saveTimer = null;
 
@@ -182,7 +183,7 @@ function loadedLines(load) {
     return {
       furnitureId: line.furnitureId,
       name: furniture ? furniture.name : "Mueble",
-      price: furniture ? furniture.price : 0,
+      price: line.price || (furniture ? furniture.price : 0),
       loaded: line.qty,
     };
   });
@@ -225,6 +226,7 @@ function render() {
   renderFurniture();
   renderMaterials();
   renderDrivers();
+  renderTrips();
   renderLoads();
   renderSettlement();
   renderSales();
@@ -248,17 +250,21 @@ function applyMobileTableLabels() {
 
 function renderSelects() {
   fillSelect("#loadDriver", state.drivers, "Seleccionar chofer");
+  fillSelect("#tripDriver", state.drivers, "Seleccionar chofer");
   fillSelect("#paymentDriver", state.drivers, "Seleccionar chofer");
   fillSelect("#materialMoveItem", state.materials, "Seleccionar material");
   fillSelect("#loadFurniture", state.furniture, "Seleccionar mueble");
+  fillSelect("#tripFurniture", state.furniture, "Seleccionar mueble");
   fillSelect("#saleFurniture", state.furniture, "Seleccionar mueble");
   fillSelect("#saleLoad", state.loads, "Seleccionar salida", formatLoadOption);
   fillSelect("#paymentLoad", state.loads, "Sin salida asignada", formatLoadOption, true);
   fillSelect("#settlementLoad", state.loads.filter((load) => !loadIsClosed(load.id)), "Seleccionar salida pendiente", formatLoadOption);
+  fillSelect("#tripCloseLoad", state.loads.filter((load) => !loadIsClosed(load.id)), "Seleccionar salida pendiente", formatLoadOption);
 }
 
 function fillSelect(selector, items, emptyLabel, formatter, allowEmpty = false) {
   const select = document.querySelector(selector);
+  if (!select) return;
   const current = select.value;
   select.innerHTML = `${allowEmpty ? `<option value="">${emptyLabel}</option>` : `<option value="">${emptyLabel}</option>`}${items
     .map((item) => `<option value="${item.id}">${formatter ? formatter(item) : item.name}</option>`)
@@ -386,6 +392,114 @@ function renderLoadLines() {
     return sum + (item ? item.price * line.qty : 0);
   }, 0);
   document.querySelector("#loadTotal").textContent = money(total);
+}
+
+function renderTripLines() {
+  document.querySelector("#tripLines").innerHTML = currentTripLines.length
+    ? currentTripLines
+        .map((line, index) => {
+          const item = byId("furniture", line.furnitureId);
+          return `<span class="chip">${item ? item.name : "Mueble"} x ${line.qty} <button type="button" onclick="removeTripLine(${index})">x</button></span>`;
+        })
+        .join("")
+    : `<span class="empty">Agrega los muebles que lleva el chofer.</span>`;
+  const total = currentTripLines.reduce((sum, line) => {
+    const item = byId("furniture", line.furnitureId);
+    return sum + (line.price || (item ? item.price : 0)) * line.qty;
+  }, 0);
+  document.querySelector("#tripTotal").textContent = money(total);
+}
+
+function tripCloseLines(load) {
+  if (!load) return [];
+  return loadedLines(load).map((line) => {
+    const input = document.querySelector(`[data-trip-returned="${line.furnitureId}"]`);
+    const returned = Math.min(line.loaded, Math.max(0, Number(input ? input.value : 0)));
+    const sold = line.loaded - returned;
+    return { ...line, returned, sold, amount: sold * line.price };
+  });
+}
+
+function renderTripClose() {
+  const load = byId("loads", document.querySelector("#tripCloseLoad").value);
+  const mode = document.querySelector("#tripPaymentMode").value;
+  const cashInput = document.querySelector("#tripCash");
+  const transferInput = document.querySelector("#tripTransfer");
+  if (mode === "credito_sin_sena") {
+    cashInput.value = 0;
+    transferInput.value = 0;
+  }
+
+  if (!load) {
+    document.querySelector("#tripReturnRows").innerHTML = `<p class="empty">Elegi una salida pendiente para cerrarla.</p>`;
+    document.querySelector("#tripSoldTotal").textContent = money(0);
+    document.querySelector("#tripPaidTotal").textContent = money(0);
+    document.querySelector("#tripPendingTotal").textContent = money(0);
+    document.querySelector("#tripCloseNote").textContent = "";
+    return;
+  }
+
+  const lines = tripCloseLines(load);
+  const soldTotal = lines.reduce((sum, line) => sum + line.amount, 0);
+  const paidTotal = Number(cashInput.value || 0) + Number(transferInput.value || 0);
+  const pending = soldTotal - paidTotal;
+  document.querySelector("#tripReturnRows").innerHTML = lines
+    .map(
+      (line) => `<article class="return-row">
+        <div><strong>${line.name}</strong><span>Llevo ${line.loaded} - ${money(line.price)} c/u</span></div>
+        <label>Volvio con <input data-trip-returned="${line.furnitureId}" type="number" min="0" max="${line.loaded}" step="1" value="${line.returned}" /></label>
+        <div class="return-result"><span>Vendio ${line.sold}</span><strong>${money(line.amount)}</strong></div>
+      </article>`
+    )
+    .join("");
+  document.querySelector("#tripSoldTotal").textContent = money(soldTotal);
+  document.querySelector("#tripPaidTotal").textContent = money(paidTotal);
+  document.querySelector("#tripPendingTotal").textContent = money(pending);
+
+  const modeLabel = mode === "contado" ? "contado" : mode === "credito_sena" ? "credito con sena" : "credito sin sena";
+  if (mode === "contado" && pending !== 0) {
+    document.querySelector("#tripCloseNote").textContent = `Contado: deberia entregar ${money(soldTotal)}. Diferencia: ${money(pending)}.`;
+  } else if (pending > 0) {
+    document.querySelector("#tripCloseNote").textContent = `${modeLabel}: queda pendiente ${money(pending)}.`;
+  } else if (pending < 0) {
+    document.querySelector("#tripCloseNote").textContent = `Entrego de mas ${money(Math.abs(pending))}. Revisa el importe.`;
+  } else {
+    document.querySelector("#tripCloseNote").textContent = "Cuadra: lo vendido coincide con lo entregado.";
+  }
+  document.querySelectorAll("[data-trip-returned]").forEach((input) => input.addEventListener("input", renderTripClose));
+}
+
+function renderTrips() {
+  renderTripLines();
+  renderTripClose();
+  document.querySelector("#tripCards").innerHTML = state.loads.length
+    ? state.loads
+        .slice()
+        .reverse()
+        .map((load) => {
+          const driver = byId("drivers", load.driverId);
+          const lines = loadedLines(load);
+          const sold = state.transactions.filter((item) => item.loadId === load.id && item.type === "venta");
+          const returned = state.transactions.filter((item) => item.loadId === load.id && item.type === "devolucion");
+          const paid = state.payments.filter((item) => item.loadId === load.id).reduce((sum, item) => sum + item.cash + item.transfer, 0);
+          const soldTotal = sold.reduce((sum, item) => sum + item.amount, 0);
+          const pending = soldTotal - paid;
+          const closed = loadIsClosed(load.id);
+          const carried = lines.map((line) => `${line.name} x ${line.loaded}`).join(", ");
+          return `<article class="driver-card trip-card">
+            <div class="panel-title"><h3>${driver ? driver.name : "Sin chofer"}</h3><span class="status ${closed ? "ok" : "warn"}">${closed ? "Cerrado" : "Pendiente"}</span></div>
+            <p>${load.date} - ${carried}</p>
+            <div class="driver-stats">
+              <span>Vendio<strong>${sold.reduce((sum, item) => sum + item.qty, 0)}</strong></span>
+              <span>Volvio<strong>${returned.reduce((sum, item) => sum + item.qty, 0)}</strong></span>
+              <span>Total vendido<strong>${money(soldTotal)}</strong></span>
+              <span>Entrego<strong>${money(paid)}</strong></span>
+              <span>Pendiente<strong>${money(pending)}</strong></span>
+            </div>
+          </article>`;
+        })
+        .join("")
+    : `<p class="empty">Todavia no hay viajes cargados.</p>`;
 }
 
 function renderLoads() {
@@ -597,6 +711,11 @@ function removeLoadLine(index) {
   renderLoadLines();
 }
 
+function removeTripLine(index) {
+  currentTripLines.splice(index, 1);
+  renderTripLines();
+}
+
 function stockDeltaFromLoad(load) {
   load.items.forEach((line) => {
     const item = byId("furniture", line.furnitureId);
@@ -710,6 +829,109 @@ document.querySelector("#driverForm").addEventListener("submit", (event) => {
   const item = { id, name: document.querySelector("#driverName").value.trim(), phone: document.querySelector("#driverPhone").value.trim() };
   state.drivers = old ? state.drivers.map((entry) => (entry.id === id ? item : entry)) : [...state.drivers, item];
   resetForm("#driverForm");
+  render();
+});
+
+document.querySelector("#addTripLine").addEventListener("click", () => {
+  const furnitureId = document.querySelector("#tripFurniture").value;
+  const qty = Number(document.querySelector("#tripQty").value);
+  if (!furnitureId || qty <= 0) return;
+  const furniture = byId("furniture", furnitureId);
+  const already = currentTripLines.filter((line) => line.furnitureId === furnitureId).reduce((sum, line) => sum + line.qty, 0);
+  if (furniture && qty + already > furniture.stock) return alert(`Stock disponible de ${furniture.name}: ${furniture.stock}.`);
+  const existing = currentTripLines.find((line) => line.furnitureId === furnitureId);
+  if (existing) existing.qty += qty;
+  else currentTripLines.push({ furnitureId, qty, price: furniture ? furniture.price : 0 });
+  document.querySelector("#tripQty").value = "";
+  renderTripLines();
+});
+
+document.querySelector("#tripForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!currentTripLines.length) return alert("Agrega al menos un mueble.");
+  const id = uid();
+  const total = currentTripLines.reduce((sum, line) => {
+    const item = byId("furniture", line.furnitureId);
+    return sum + (line.price || (item ? item.price : 0)) * line.qty;
+  }, 0);
+  const load = {
+    id,
+    date: document.querySelector("#tripDate").value,
+    driverId: document.querySelector("#tripDriver").value,
+    note: document.querySelector("#tripNote").value.trim(),
+    items: currentTripLines.map((line) => ({ ...line })),
+    total,
+  };
+  stockDeltaFromLoad(load);
+  state.loads.push(load);
+  currentTripLines = [];
+  resetForm("#tripForm");
+  document.querySelector("#tripDate").value = today();
+  render();
+});
+
+document.querySelector("#tripCloseForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const load = byId("loads", document.querySelector("#tripCloseLoad").value);
+  if (!load) return alert("Selecciona una salida pendiente.");
+  if (loadIsClosed(load.id) || existingLoadTransactions(load.id).length) return alert("Esta salida ya fue cerrada.");
+
+  const mode = document.querySelector("#tripPaymentMode").value;
+  const cash = mode === "credito_sin_sena" ? 0 : Number(document.querySelector("#tripCash").value || 0);
+  const transfer = mode === "credito_sin_sena" ? 0 : Number(document.querySelector("#tripTransfer").value || 0);
+  const lines = tripCloseLines(load);
+  const soldTotal = lines.reduce((sum, line) => sum + line.amount, 0);
+  const paidTotal = cash + transfer;
+  const pending = soldTotal - paidTotal;
+  if (lines.some((line) => line.returned < 0 || line.returned > line.loaded)) return alert("Revisa las cantidades que volvieron.");
+  if (mode === "contado" && pending !== 0) return alert(`Contado debe cuadrar exacto: tiene que entregar ${money(soldTotal)}.`);
+  if (paidTotal > soldTotal) return alert("El dinero entregado no puede ser mayor al total vendido.");
+
+  const date = document.querySelector("#tripCloseDate").value;
+  const paymentLabel = mode === "contado" ? "contado" : mode === "credito_sena" ? "credito con sena" : "credito sin sena";
+  lines.forEach((line) => {
+    if (line.sold > 0) {
+      state.transactions.push({
+        id: uid(),
+        date,
+        loadId: load.id,
+        furnitureId: line.furnitureId,
+        type: "venta",
+        qty: line.sold,
+        payment: paymentLabel,
+        amount: line.amount,
+      });
+    }
+    if (line.returned > 0) {
+      const transaction = {
+        id: uid(),
+        date,
+        loadId: load.id,
+        furnitureId: line.furnitureId,
+        type: "devolucion",
+        qty: line.returned,
+        payment: "-",
+        amount: 0,
+      };
+      stockDeltaFromTransaction(transaction);
+      state.transactions.push(transaction);
+    }
+  });
+
+  state.payments.push({
+    id: uid(),
+    date,
+    driverId: load.driverId,
+    loadId: load.id,
+    cash,
+    transfer,
+    note: `${paymentLabel}. Pendiente: ${money(pending)}`,
+  });
+
+  resetForm("#tripCloseForm");
+  document.querySelector("#tripCloseDate").value = today();
+  document.querySelector("#tripCash").value = 0;
+  document.querySelector("#tripTransfer").value = 0;
   render();
 });
 
@@ -868,9 +1090,15 @@ document.querySelector("#settlementLoad").addEventListener("change", renderSettl
 document.querySelector("#settlementCash").addEventListener("input", renderSettlement);
 document.querySelector("#settlementTransfer").addEventListener("input", renderSettlement);
 document.querySelector("#calculateSettlement").addEventListener("click", renderSettlement);
+document.querySelector("#tripCloseLoad").addEventListener("change", renderTripClose);
+document.querySelector("#tripPaymentMode").addEventListener("change", renderTripClose);
+document.querySelector("#tripCash").addEventListener("input", renderTripClose);
+document.querySelector("#tripTransfer").addEventListener("input", renderTripClose);
 
 async function initApp() {
   document.querySelector("#loadDate").value = today();
+  document.querySelector("#tripDate").value = today();
+  document.querySelector("#tripCloseDate").value = today();
   document.querySelector("#saleDate").value = today();
   document.querySelector("#paymentDate").value = today();
   document.querySelector("#settlementDate").value = today();
