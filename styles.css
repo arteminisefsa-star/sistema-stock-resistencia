@@ -181,11 +181,20 @@ h3 {
   flex-wrap: wrap;
 }
 
+.filter-toggle {
+  display: none;
+}
+
+.filter-sheet-head {
+  display: none;
+}
+
 .segmented button,
 .ghost,
 .primary,
 .danger,
-.small {
+.small,
+.filter-toggle {
   min-height: 38px;
   border-radius: 7px;
   border: 1px solid var(--line);
@@ -485,59 +494,69 @@ tr:last-child td {
   body {
     display: block;
     min-width: 320px;
-    padding-bottom: 78px;
+    padding-bottom: 60px;
     background: #eef2f3;
   }
 
   .app,
   .sidebar {
-    padding: 14px;
+    padding: 10px;
   }
 
   .sidebar {
     position: static;
     top: 0;
     z-index: 4;
-    padding: 14px 14px 10px;
+    padding: 6px 10px;
     background: var(--brand-strong);
   }
 
+  .sidebar .eyebrow {
+    display: none;
+  }
+
   .sidebar h1 {
-    font-size: 19px;
+    font-size: 15px;
   }
 
   .nav {
     position: fixed;
-    left: 10px;
-    right: 10px;
-    bottom: 10px;
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
     z-index: 8;
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: minmax(92px, 1fr);
-    gap: 8px;
+    grid-auto-columns: minmax(68px, 1fr);
+    gap: 4px;
     overflow-x: auto;
-    padding: 8px;
+    padding: 5px;
     border: 1px solid rgba(16, 37, 34, 0.12);
-    border-radius: 10px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 10px 30px rgba(16, 37, 34, 0.22);
+    box-shadow: 0 8px 22px rgba(16, 37, 34, 0.18);
     scroll-snap-type: x proximity;
     -webkit-overflow-scrolling: touch;
   }
 
   .nav-button {
     width: 100%;
-    min-height: 50px;
+    min-height: 42px;
+    padding: 6px 8px;
     border-color: transparent;
-    border-radius: 8px;
+    border-radius: 7px;
     background: transparent;
     color: var(--muted);
-    font-size: 12px;
+    font-size: 0;
     font-weight: 700;
     text-align: center;
     white-space: nowrap;
     scroll-snap-align: start;
+  }
+
+  .nav-button::after {
+    content: attr(data-short);
+    font-size: 12px;
   }
 
   .nav-button.active,
@@ -547,24 +566,71 @@ tr:last-child td {
   }
 
   .app {
-    padding-top: 12px;
+    padding-top: 8px;
   }
 
   .topbar {
     position: sticky;
     top: 0;
     z-index: 3;
-    gap: 14px;
-    margin-bottom: 16px;
-    padding: 12px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 8px;
+    margin-bottom: 8px;
+    padding: 7px 9px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.96);
   }
 
-  .topbar,
+  .topbar .eyebrow {
+    display: none;
+  }
+
+  .sync-status {
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 5px 9px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
   .date-filter {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    top: 72px;
+    z-index: 12;
+    display: none;
+    gap: 7px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 12px 34px rgba(16, 37, 34, 0.22);
+  }
+
+  .topbar.filters-open .date-filter {
     display: grid;
+  }
+
+  .filter-sheet-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .filter-sheet-head strong {
+    font-size: 15px;
   }
 
   .date-filter,
@@ -582,6 +648,7 @@ tr:last-child td {
   .segmented {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
   }
 
   .segmented button,
@@ -589,7 +656,8 @@ tr:last-child td {
   .primary,
   .danger,
   .small {
-    min-height: 44px;
+    min-height: 38px;
+    padding: 7px 10px;
   }
 
   .form-actions {
@@ -607,7 +675,7 @@ tr:last-child td {
   }
 
   .metrics {
-    gap: 10px;
+    gap: 8px;
   }
 
   .metrics article,
@@ -620,23 +688,33 @@ tr:last-child td {
   .metrics article,
   .panel,
   .driver-card {
-    padding: 14px;
+    padding: 10px;
   }
 
   .metrics strong {
-    font-size: 22px;
+    font-size: 19px;
     overflow-wrap: anywhere;
   }
 
+  .metrics article {
+    gap: 3px;
+  }
+
+  .metrics span,
+  label {
+    font-size: 12px;
+  }
+
   .form-grid {
-    gap: 12px;
+    gap: 8px;
   }
 
   input,
   select {
     width: 100%;
-    min-height: 44px;
+    min-height: 38px;
     font-size: 16px;
+    padding: 6px 9px;
   }
 
   .line-editor {
@@ -666,6 +744,7 @@ tr:last-child td {
     width: 100%;
     justify-content: space-between;
     border-radius: 8px;
+    padding: 7px 9px;
   }
 
   .table-wrap {
@@ -694,11 +773,11 @@ tr:last-child td {
 
   tbody {
     display: grid;
-    gap: 10px;
+    gap: 8px;
   }
 
   tr {
-    padding: 10px 12px;
+    padding: 8px 10px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: #fff;
@@ -707,10 +786,10 @@ tr:last-child td {
   td {
     display: grid;
     grid-template-columns: minmax(96px, 42%) minmax(0, 1fr);
-    gap: 10px;
+    gap: 8px;
     align-items: center;
-    min-height: 32px;
-    padding: 8px 0;
+    min-height: 28px;
+    padding: 6px 0;
     border-bottom: 1px solid #edf1f4;
     white-space: normal;
     overflow-wrap: anywhere;
@@ -744,11 +823,12 @@ tr:last-child td {
   }
 
   h2 {
-    font-size: 24px;
+    font-size: 19px;
+    line-height: 1.1;
   }
 
   h3 {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .login-panel {
@@ -770,16 +850,30 @@ tr:last-child td {
 @media (max-width: 390px) {
   .app,
   .sidebar {
-    padding-inline: 12px;
+    padding-inline: 8px;
   }
 
   .segmented {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .metrics article,
   .panel,
   .driver-card {
-    padding: 12px;
+    padding: 9px;
+  }
+
+  .nav {
+    grid-auto-columns: minmax(64px, 1fr);
+  }
+
+  .nav-button::after {
+    font-size: 11px;
+  }
+
+  .date-filter {
+    left: 8px;
+    right: 8px;
+    top: 66px;
   }
 }

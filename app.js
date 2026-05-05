@@ -230,7 +230,20 @@ function render() {
   renderSales();
   renderPayments();
   renderMovements();
+  applyMobileTableLabels();
   saveState();
+}
+
+function applyMobileTableLabels() {
+  document.querySelectorAll("table").forEach((table) => {
+    const labels = Array.from(table.querySelectorAll("thead th")).map((cell) => cell.textContent.trim());
+    table.querySelectorAll("tbody tr").forEach((row) => {
+      Array.from(row.children).forEach((cell, index) => {
+        if (cell.classList.contains("empty")) return;
+        cell.dataset.label = labels[index] || "";
+      });
+    });
+  });
 }
 
 function renderSelects() {
@@ -621,6 +634,12 @@ document.querySelectorAll("[data-range]").forEach((button) => button.addEventLis
 document.querySelector("#filterFrom").addEventListener("change", render);
 document.querySelector("#filterTo").addEventListener("change", render);
 document.querySelector("#driverSearch").addEventListener("input", renderDrivers);
+document.querySelector("#filterToggle").addEventListener("click", () => {
+  document.querySelector(".topbar").classList.toggle("filters-open");
+});
+document.querySelector("#filterClose").addEventListener("click", () => {
+  document.querySelector(".topbar").classList.remove("filters-open");
+});
 document.querySelector("#loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const password = document.querySelector("#loginPassword").value;
