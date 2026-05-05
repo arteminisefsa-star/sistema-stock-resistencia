@@ -30,6 +30,11 @@ function requireAuth(request, response, next) {
   return response.status(401).json({ error: "No autorizado" });
 }
 
+function selectedStateId(request) {
+  const branch = String(request.query.branch || request.body.branch || "resistencia").toLowerCase();
+  return branch === "formosa" ? "control-muebles-formosa" : stateId;
+}
+
 async function ensureDatabase() {
   if (!pool) return;
   await pool.query(`
@@ -63,7 +68,7 @@ app.post("/api/login", (request, response) => {
 
 app.get("/api/state", requireAuth, async (request, response) => {
   if (!pool) return response.status(500).json({ error: "Falta DATABASE_URL" });
-  const result = await pool.query("select data from app_state where id = $1", [stateId]);
+  const result = await pool.query("select data from app_state where id = $1", [selectedStateId(request)]);
   response.json({ data: result.rows[0] ? result.rows[0].data : {} });
 });
 
@@ -76,7 +81,7 @@ app.put("/api/state", requireAuth, async (request, response) => {
       on conflict (id)
       do update set data = excluded.data, updated_at = now()
     `,
-    [stateId, request.body.data || {}]
+    [selectedStateId(request), request.body.data || {}]
   );
   response.json({ ok: true });
 });

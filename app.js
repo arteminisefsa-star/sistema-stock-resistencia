@@ -1,4 +1,9 @@
 const STORE_KEY = "control-muebles-v1";
+const BRANCH_KEY = "control-muebles-branch";
+const branches = {
+  resistencia: "Resistencia",
+  formosa: "Formosa",
+};
 
 const today = () => {
   const date = new Date();
@@ -19,6 +24,7 @@ const initialState = {
   materialMoves: [],
 };
 
+let currentBranch = localStorage.getItem(BRANCH_KEY) || "resistencia";
 let state = loadLocalState();
 let currentLoadLines = [];
 let currentTripLines = [];
@@ -26,18 +32,20 @@ let booting = true;
 let saveTimer = null;
 
 function loadLocalState() {
-  const saved = localStorage.getItem(STORE_KEY);
+  const saved = localStorage.getItem(`${STORE_KEY}-${currentBranch}`);
   return saved ? { ...initialState, ...JSON.parse(saved) } : initialState;
 }
 
 function saveState() {
-  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  localStorage.setItem(`${STORE_KEY}-${currentBranch}`, JSON.stringify(state));
   scheduleServerSave();
 }
 
 function setSyncStatus(message) {
   const status = document.querySelector("#syncStatus");
   if (status) status.textContent = message;
+  const branchStatus = document.querySelector("#branchStatus");
+  if (branchStatus) branchStatus.textContent = branches[currentBranch] || "Resistencia";
 }
 
 function showLogin(message = "") {
@@ -64,9 +72,9 @@ async function apiRequest(path, options = {}) {
 async function loadServerState() {
   setSyncStatus("Cargando datos online...");
   try {
-    const data = await apiRequest("/api/state");
+    const data = await apiRequest(`/api/state?branch=${currentBranch}`);
     state = { ...initialState, ...(data.data || {}) };
-    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    localStorage.setItem(`${STORE_KEY}-${currentBranch}`, JSON.stringify(state));
     setSyncStatus("Sincronizado online");
   } catch (error) {
     setSyncStatus("No se pudo cargar la nube. Usando respaldo local.");
@@ -85,13 +93,27 @@ async function saveServerState() {
   try {
     await apiRequest("/api/state", {
       method: "PUT",
-      body: JSON.stringify({ data: state }),
+      body: JSON.stringify({ branch: currentBranch, data: state }),
     });
     setSyncStatus("Sincronizado online");
   } catch (error) {
     setSyncStatus("Error al guardar online. Quedo respaldo local.");
     console.error(error);
   }
+}
+
+async function switchBranch(branch) {
+  currentBranch = branch === "formosa" ? "formosa" : "resistencia";
+  localStorage.setItem(BRANCH_KEY, currentBranch);
+  document.querySelector("#loginBranch").value = currentBranch;
+  document.querySelector("#branchSwitch").value = currentBranch;
+  state = loadLocalState();
+  currentLoadLines = [];
+  currentTripLines = [];
+  booting = true;
+  await loadServerState();
+  booting = false;
+  render();
 }
 
 async function initServerSession() {
@@ -718,6 +740,24 @@ function reverseStockDeltaFromTransaction(transaction) {
   if (item && transaction.type === "devolucion") item.stock -= transaction.qty;
 }
 
+function clearMovementsOnly() {
+  const confirmed = confirm("Esto borra viajes, ventas, devoluciones, cobros y movimientos de materiales. Muebles y choferes quedan guardados. Continuar?");
+  if (!confirmed) return;
+  state.loads.forEach(reverseStockDeltaFromLoad);
+  state.transactions.forEach(reverseStockDeltaFromTransaction);
+  state.materialMoves.forEach((move) => {
+    const material = byId("materials", move.materialId);
+    if (material) material.stock += move.type === "entrada" ? -move.qty : move.qty;
+  });
+  state.loads = [];
+  state.transactions = [];
+  state.payments = [];
+  state.materialMoves = [];
+  currentLoadLines = [];
+  currentTripLines = [];
+  render();
+}
+
 document.querySelectorAll(".nav-button").forEach((button) => {
   button.addEventListener("click", () => {
     document.querySelectorAll(".nav-button, .view").forEach((item) => item.classList.remove("active"));
@@ -737,9 +777,15 @@ document.querySelector("#filterToggle").addEventListener("click", () => {
 document.querySelector("#filterClose").addEventListener("click", () => {
   document.querySelector(".topbar").classList.remove("filters-open");
 });
+document.querySelector("#branchSwitch").addEventListener("change", (event) => {
+  switchBranch(event.target.value);
+});
 document.querySelector("#loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const password = document.querySelector("#loginPassword").value;
+  currentBranch = document.querySelector("#loginBranch").value;
+  localStorage.setItem(BRANCH_KEY, currentBranch);
+  document.querySelector("#branchSwitch").value = currentBranch;
   document.querySelector("#loginMessage").textContent = "Ingresando...";
   try {
     await apiRequest("/api/login", {
@@ -1054,6 +1100,7 @@ document.querySelector("#clearMaterial").addEventListener("click", () => resetFo
 document.querySelector("#clearDriver").addEventListener("click", () => resetForm("#driverForm"));
 document.querySelector("#clearSale").addEventListener("click", () => resetForm("#saleForm"));
 document.querySelector("#clearPayment").addEventListener("click", () => resetForm("#paymentForm"));
+document.querySelector("#clearMovements").addEventListener("click", clearMovementsOnly);
 document.querySelector("#saleFurniture").addEventListener("change", updateSaleAmount);
 document.querySelector("#saleQty").addEventListener("input", updateSaleAmount);
 document.querySelector("#settlementLoad").addEventListener("change", renderSettlement);
@@ -1065,6 +1112,8 @@ document.querySelector("#tripCash").addEventListener("input", renderTripClose);
 document.querySelector("#tripTransfer").addEventListener("input", renderTripClose);
 
 async function initApp() {
+  document.querySelector("#loginBranch").value = currentBranch;
+  document.querySelector("#branchSwitch").value = currentBranch;
   document.querySelector("#loadDate").value = today();
   document.querySelector("#tripDate").value = today();
   document.querySelector("#tripCloseDate").value = today();

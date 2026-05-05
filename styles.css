@@ -185,6 +185,10 @@ h3 {
   display: none;
 }
 
+.branch-switch {
+  min-width: 140px;
+}
+
 .filter-sheet-head {
   display: none;
 }
@@ -618,7 +622,7 @@ tr:last-child td {
     position: sticky;
     top: 0;
     z-index: 3;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 4px 8px;
     margin-bottom: 8px;
     padding: 7px 9px;
@@ -646,6 +650,14 @@ tr:last-child td {
     color: var(--ink);
     font-size: 12px;
     font-weight: 700;
+  }
+
+  .branch-switch {
+    min-width: 0;
+    width: 116px;
+    min-height: 30px;
+    padding: 5px 8px;
+    font-size: 12px;
   }
 
   .date-filter {

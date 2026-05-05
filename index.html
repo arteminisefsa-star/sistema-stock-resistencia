@@ -12,6 +12,12 @@
         <p class="eyebrow">Acceso privado</p>
         <h1>Control de Muebles</h1>
         <label>Contrasena <input required id="loginPassword" type="password" autocomplete="current-password" /></label>
+        <label>Provincia
+          <select id="loginBranch">
+            <option value="resistencia">Resistencia</option>
+            <option value="formosa">Formosa</option>
+          </select>
+        </label>
         <button class="primary" type="submit">Ingresar</button>
         <p id="loginMessage" class="auth-message"></p>
       </form>
@@ -37,8 +43,12 @@
         <div>
           <p class="eyebrow">Sistema local</p>
           <h2 id="viewTitle">Resumen</h2>
-          <p id="syncStatus" class="sync-status">Iniciando...</p>
+          <p class="sync-status"><span id="branchStatus">Resistencia</span> - <span id="syncStatus">Iniciando...</span></p>
         </div>
+        <select class="branch-switch" id="branchSwitch">
+          <option value="resistencia">Resistencia</option>
+          <option value="formosa">Formosa</option>
+        </select>
         <button class="filter-toggle" id="filterToggle" type="button">Filtros</button>
         <div class="date-filter">
           <div class="filter-sheet-head">
@@ -342,7 +352,10 @@
 
       <section id="movimientos" class="view">
         <div class="panel">
-          <div class="panel-title"><h3>Historial editable</h3></div>
+          <div class="panel-title">
+            <h3>Historial editable</h3>
+            <button class="danger" type="button" id="clearMovements">Borrar movimientos</button>
+          </div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Impacto</th></tr></thead>
