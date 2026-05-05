@@ -19,6 +19,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   grid-template-columns: 260px 1fr;
   background: var(--bg);
@@ -484,6 +485,8 @@ tr:last-child td {
   body {
     display: block;
     min-width: 320px;
+    padding-bottom: 78px;
+    background: #eef2f3;
   }
 
   .app,
@@ -492,42 +495,71 @@ tr:last-child td {
   }
 
   .sidebar {
-    position: sticky;
+    position: static;
     top: 0;
     z-index: 4;
-    display: grid;
-    gap: 12px;
-    box-shadow: 0 8px 20px rgba(16, 37, 34, 0.18);
+    padding: 14px 14px 10px;
+    background: var(--brand-strong);
   }
 
   .sidebar h1 {
-    font-size: 20px;
+    font-size: 19px;
   }
 
   .nav {
-    display: flex;
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    z-index: 8;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(92px, 1fr);
     gap: 8px;
     overflow-x: auto;
-    padding-bottom: 4px;
+    padding: 8px;
+    border: 1px solid rgba(16, 37, 34, 0.12);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 10px 30px rgba(16, 37, 34, 0.22);
     scroll-snap-type: x proximity;
     -webkit-overflow-scrolling: touch;
   }
 
   .nav-button {
-    flex: 0 0 auto;
-    width: auto;
-    min-height: 44px;
+    width: 100%;
+    min-height: 50px;
+    border-color: transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
     white-space: nowrap;
     scroll-snap-align: start;
   }
 
+  .nav-button.active,
+  .nav-button:hover {
+    background: #e8f1ef;
+    color: var(--brand-strong);
+  }
+
   .app {
-    padding-top: 16px;
+    padding-top: 12px;
   }
 
   .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 3;
     gap: 14px;
     margin-bottom: 16px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.96);
   }
 
   .topbar,
@@ -582,7 +614,7 @@ tr:last-child td {
   .panel,
   .driver-card {
     border-radius: 8px;
-    box-shadow: none;
+    box-shadow: 0 4px 16px rgba(21, 31, 38, 0.06);
   }
 
   .metrics article,
@@ -637,15 +669,78 @@ tr:last-child td {
   }
 
   .table-wrap {
-    margin-inline: -14px;
-    border-top: 1px solid var(--line);
-    border-bottom: 1px solid var(--line);
+    margin-inline: 0;
+    border: 0;
     border-radius: 0;
+    overflow: visible;
   }
 
-  th,
+  table {
+    min-width: 0;
+  }
+
+  table,
+  thead,
+  tbody,
+  tr,
   td {
-    padding: 11px 10px;
+    display: block;
+    width: 100%;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  tr {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  td {
+    display: grid;
+    grid-template-columns: minmax(96px, 42%) minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    min-height: 32px;
+    padding: 8px 0;
+    border-bottom: 1px solid #edf1f4;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: right;
+  }
+
+  td:last-child {
+    border-bottom: 0;
+  }
+
+  td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  td.empty {
+    display: block;
+    text-align: left;
+  }
+
+  td.empty::before {
+    content: "";
+    display: none;
+  }
+
+  td .small {
+    justify-self: end;
   }
 
   h2 {
@@ -658,6 +753,17 @@ tr:last-child td {
 
   .login-panel {
     padding: 20px;
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+
+  .auth-gate {
+    align-items: end;
+    padding: 14px;
+  }
+
+  body.auth-required .sidebar,
+  body.auth-required .app {
+    filter: none;
   }
 }
 
