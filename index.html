@@ -25,10 +25,10 @@
       <nav class="nav" aria-label="Paneles">
         <button class="nav-button active" data-view="resumen" data-short="Resumen">Resumen</button>
         <button class="nav-button" data-view="muebles" data-short="Stock">Stock muebles</button>
-        <button class="nav-button" data-view="materiales" data-short="Materiales">Materiales</button>
-        <button class="nav-button" data-view="choferes" data-short="Choferes">Choferes</button>
         <button class="nav-button" data-view="viajes" data-short="Viajes">Viajes</button>
         <button class="nav-button" data-view="movimientos" data-short="Movs.">Movimientos</button>
+        <button class="nav-button" data-view="choferes" data-short="Choferes">Choferes</button>
+        <button class="nav-button" data-view="materiales" data-short="Materiales">Materiales</button>
       </nav>
     </aside>
 
@@ -64,7 +64,7 @@
       <section id="resumen" class="view active">
         <div class="metrics">
           <article>
-            <span>Total ventas</span>
+            <span>Total recibido</span>
             <strong id="metricSales">$0</strong>
           </article>
           <article>
@@ -84,7 +84,7 @@
             <strong id="metricReturned">0</strong>
           </article>
           <article>
-            <span>Saldo pendiente</span>
+            <span>Viajes cerrados</span>
             <strong id="metricPending">$0</strong>
           </article>
         </div>
@@ -101,7 +101,7 @@
                   <th>Devueltos</th>
                   <th>Efectivo</th>
                   <th>Transferencia</th>
-                  <th>Pendiente</th>
+                  <th>Recibido</th>
                 </tr>
               </thead>
               <tbody id="driverSummaryRows"></tbody>
@@ -114,7 +114,6 @@
         <form id="furnitureForm" class="form-grid panel">
           <input type="hidden" id="furnitureId" />
           <label>Nombre <input required id="furnitureName" placeholder="Mesa, rack, comoda..." /></label>
-          <label>Precio <input required id="furniturePrice" type="number" min="0" step="0.01" /></label>
           <label>Cantidad <input required id="furnitureStock" type="number" min="0" step="1" /></label>
           <label>Stock minimo <input id="furnitureMin" type="number" min="0" step="1" value="0" /></label>
           <button class="primary" type="submit">Guardar mueble</button>
@@ -124,7 +123,7 @@
           <div class="panel-title"><h3>Stock actual</h3></div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Mueble</th><th>Precio</th><th>Stock</th><th>Minimo</th><th>Estado</th><th></th></tr></thead>
+              <thead><tr><th>Mueble</th><th>Stock</th><th>Minimo</th><th>Estado</th><th></th></tr></thead>
               <tbody id="furnitureRows"></tbody>
             </table>
           </div>
@@ -199,13 +198,6 @@
           <div class="form-grid">
             <label>Fecha <input required id="tripCloseDate" type="date" /></label>
             <label>Salida pendiente <select required id="tripCloseLoad"></select></label>
-            <label>Tipo de cobro
-              <select id="tripPaymentMode">
-                <option value="contado">Contado</option>
-                <option value="credito_sena">Credito con sena</option>
-                <option value="credito_sin_sena">Credito sin sena</option>
-              </select>
-            </label>
           </div>
           <div id="tripReturnRows" class="return-list"></div>
           <div class="form-grid">
@@ -213,9 +205,9 @@
             <label>Transferencia entregada <input id="tripTransfer" type="number" min="0" step="0.01" value="0" /></label>
           </div>
           <div class="settlement-total trip-result">
-            <span>Total vendido</span><strong id="tripSoldTotal">$0</strong>
-            <span>Entrego ahora</span><strong id="tripPaidTotal">$0</strong>
-            <span>Pendiente</span><strong id="tripPendingTotal">$0</strong>
+            <span>Efectivo</span><strong id="tripCashTotal">$0</strong>
+            <span>Transferencia</span><strong id="tripTransferTotal">$0</strong>
+            <span>Total entregado</span><strong id="tripPaidTotal">$0</strong>
           </div>
           <div class="settlement-note" id="tripCloseNote"></div>
           <div class="form-actions">
