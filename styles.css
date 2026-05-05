@@ -43,6 +43,16 @@ select {
   font: inherit;
 }
 
+button,
+input,
+select {
+  max-width: 100%;
+}
+
+button {
+  touch-action: manipulation;
+}
+
 .auth-gate {
   position: fixed;
   inset: 0;
@@ -227,6 +237,13 @@ select {
   padding: 8px 10px;
 }
 
+input:focus,
+select:focus,
+button:focus-visible {
+  outline: 2px solid rgba(22, 97, 90, 0.32);
+  outline-offset: 2px;
+}
+
 .view {
   display: none;
 }
@@ -279,11 +296,14 @@ select {
 
 .table-wrap {
   overflow-x: auto;
+  border-radius: 8px;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 680px;
 }
 
 th,
@@ -363,6 +383,15 @@ tr:last-child td {
 
 .line-editor {
   margin: 16px 0;
+  align-items: stretch;
+}
+
+.line-editor select {
+  min-width: 220px;
+}
+
+.line-editor input {
+  width: 130px;
 }
 
 .settlement-head {
@@ -434,6 +463,7 @@ tr:last-child td {
   .sidebar {
     position: static;
     height: auto;
+    gap: 16px;
   }
 
   .nav {
@@ -451,9 +481,91 @@ tr:last-child td {
 }
 
 @media (max-width: 620px) {
+  body {
+    display: block;
+    min-width: 320px;
+  }
+
   .app,
   .sidebar {
-    padding: 16px;
+    padding: 14px;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    display: grid;
+    gap: 12px;
+    box-shadow: 0 8px 20px rgba(16, 37, 34, 0.18);
+  }
+
+  .sidebar h1 {
+    font-size: 20px;
+  }
+
+  .nav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-button {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 44px;
+    white-space: nowrap;
+    scroll-snap-align: start;
+  }
+
+  .app {
+    padding-top: 16px;
+  }
+
+  .topbar {
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .topbar,
+  .date-filter {
+    display: grid;
+  }
+
+  .date-filter,
+  .segmented,
+  .form-actions,
+  .panel-title,
+  .line-editor {
+    align-items: stretch;
+  }
+
+  .date-filter label {
+    width: 100%;
+  }
+
+  .segmented {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .segmented button,
+  .ghost,
+  .primary,
+  .danger,
+  .small {
+    min-height: 44px;
+  }
+
+  .form-actions {
+    display: grid;
+  }
+
+  .form-actions strong {
+    margin-bottom: 2px;
   }
 
   .metrics,
@@ -462,12 +574,106 @@ tr:last-child td {
     grid-template-columns: 1fr;
   }
 
+  .metrics {
+    gap: 10px;
+  }
+
+  .metrics article,
+  .panel,
+  .driver-card {
+    border-radius: 8px;
+    box-shadow: none;
+  }
+
+  .metrics article,
+  .panel,
+  .driver-card {
+    padding: 14px;
+  }
+
+  .metrics strong {
+    font-size: 22px;
+    overflow-wrap: anywhere;
+  }
+
+  .form-grid {
+    gap: 12px;
+  }
+
+  input,
+  select {
+    width: 100%;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .line-editor {
+    display: grid;
+  }
+
+  .line-editor select,
+  .line-editor input {
+    width: 100%;
+    min-width: 0;
+  }
+
   .settlement-head {
     align-items: stretch;
     display: grid;
   }
 
+  .settlement-total {
+    min-width: 0;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .chip {
+    width: 100%;
+    justify-content: space-between;
+    border-radius: 8px;
+  }
+
+  .table-wrap {
+    margin-inline: -14px;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+  }
+
+  th,
+  td {
+    padding: 11px 10px;
+  }
+
   h2 {
     font-size: 24px;
+  }
+
+  h3 {
+    font-size: 17px;
+  }
+
+  .login-panel {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 390px) {
+  .app,
+  .sidebar {
+    padding-inline: 12px;
+  }
+
+  .segmented {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics article,
+  .panel,
+  .driver-card {
+    padding: 12px;
   }
 }

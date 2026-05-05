@@ -623,13 +623,12 @@ document.querySelector("#filterTo").addEventListener("change", render);
 document.querySelector("#driverSearch").addEventListener("input", renderDrivers);
 document.querySelector("#loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const email = document.querySelector("#loginEmail").value.trim();
   const password = document.querySelector("#loginPassword").value;
   document.querySelector("#loginMessage").textContent = "Ingresando...";
   try {
     await apiRequest("/api/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ password }),
     });
     hideLogin();
     booting = true;
