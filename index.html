@@ -23,15 +23,15 @@
         <h1>Control de Muebles</h1>
       </div>
       <nav class="nav" aria-label="Paneles">
-        <button class="nav-button active" data-view="resumen">Resumen</button>
-        <button class="nav-button" data-view="muebles">Stock muebles</button>
-        <button class="nav-button" data-view="materiales">Materiales</button>
-        <button class="nav-button" data-view="choferes">Choferes</button>
-        <button class="nav-button" data-view="salidas">Salida chofer</button>
-        <button class="nav-button" data-view="rendicion">Cierre / rendicion</button>
-        <button class="nav-button" data-view="ventas">Ventas y devoluciones</button>
-        <button class="nav-button" data-view="dinero">Dinero recibido</button>
-        <button class="nav-button" data-view="movimientos">Movimientos</button>
+        <button class="nav-button active" data-view="resumen" data-short="Resumen">Resumen</button>
+        <button class="nav-button" data-view="muebles" data-short="Stock">Stock muebles</button>
+        <button class="nav-button" data-view="materiales" data-short="Materiales">Materiales</button>
+        <button class="nav-button" data-view="choferes" data-short="Choferes">Choferes</button>
+        <button class="nav-button" data-view="salidas" data-short="Salidas">Salida chofer</button>
+        <button class="nav-button" data-view="rendicion" data-short="Cierre">Cierre / rendicion</button>
+        <button class="nav-button" data-view="ventas" data-short="Ventas">Ventas y devoluciones</button>
+        <button class="nav-button" data-view="dinero" data-short="Dinero">Dinero recibido</button>
+        <button class="nav-button" data-view="movimientos" data-short="Movs.">Movimientos</button>
       </nav>
     </aside>
 
@@ -42,6 +42,7 @@
           <h2 id="viewTitle">Resumen</h2>
           <p id="syncStatus" class="sync-status">Iniciando...</p>
         </div>
+        <button class="filter-toggle" id="filterToggle" type="button">Filtros</button>
         <div class="date-filter">
           <label>
             Desde
