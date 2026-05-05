@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Control de Muebles</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <section id="authGate" class="auth-gate">
+      <form id="loginForm" class="login-panel">
+        <p class="eyebrow">Acceso privado</p>
+        <h1>Control de Muebles</h1>
+        <label>Email <input required id="loginEmail" type="email" autocomplete="email" /></label>
+        <label>Contrasena <input required id="loginPassword" type="password" autocomplete="current-password" /></label>
+        <button class="primary" type="submit">Ingresar</button>
+        <p id="loginMessage" class="auth-message"></p>
+      </form>
+    </section>
+
+    <aside class="sidebar">
+      <div>
+        <p class="eyebrow">Gestion</p>
+        <h1>Control de Muebles</h1>
+      </div>
+      <nav class="nav" aria-label="Paneles">
+        <button class="nav-button active" data-view="resumen">Resumen</button>
+        <button class="nav-button" data-view="muebles">Stock muebles</button>
+        <button class="nav-button" data-view="materiales">Materiales</button>
+        <button class="nav-button" data-view="choferes">Choferes</button>
+        <button class="nav-button" data-view="salidas">Salida chofer</button>
+        <button class="nav-button" data-view="rendicion">Cierre / rendicion</button>
+        <button class="nav-button" data-view="ventas">Ventas y devoluciones</button>
+        <button class="nav-button" data-view="dinero">Dinero recibido</button>
+        <button class="nav-button" data-view="movimientos">Movimientos</button>
+      </nav>
+    </aside>
+
+    <main class="app">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">Sistema local</p>
+          <h2 id="viewTitle">Resumen</h2>
+          <p id="syncStatus" class="sync-status">Iniciando...</p>
+        </div>
+        <div class="date-filter">
+          <label>
+            Desde
+            <input type="date" id="filterFrom" />
+          </label>
+          <label>
+            Hasta
+            <input type="date" id="filterTo" />
+          </label>
+          <div class="segmented">
+            <button data-range="today">Dia</button>
+            <button data-range="week">Semana</button>
+            <button data-range="month">Mes</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="resumen" class="view active">
+        <div class="metrics">
+          <article>
+            <span>Total ventas</span>
+            <strong id="metricSales">$0</strong>
+          </article>
+          <article>
+            <span>Efectivo</span>
+            <strong id="metricCash">$0</strong>
+          </article>
+          <article>
+            <span>Transferencia</span>
+            <strong id="metricTransfer">$0</strong>
+          </article>
+          <article>
+            <span>Muebles vendidos</span>
+            <strong id="metricSold">0</strong>
+          </article>
+          <article>
+            <span>Muebles devueltos</span>
+            <strong id="metricReturned">0</strong>
+          </article>
+          <article>
+            <span>Saldo pendiente</span>
+            <strong id="metricPending">$0</strong>
+          </article>
+        </div>
+        <div class="panel">
+          <div class="panel-title">
+            <h3>Resumen por chofer</h3>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Chofer</th>
+                  <th>Ventas</th>
+                  <th>Devueltos</th>
+                  <th>Efectivo</th>
+                  <th>Transferencia</th>
+                  <th>Pendiente</th>
+                </tr>
+              </thead>
+              <tbody id="driverSummaryRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="muebles" class="view">
+        <form id="furnitureForm" class="form-grid panel">
+          <input type="hidden" id="furnitureId" />
+          <label>Nombre <input required id="furnitureName" placeholder="Mesa, rack, comoda..." /></label>
+          <label>Precio <input required id="furniturePrice" type="number" min="0" step="0.01" /></label>
+          <label>Cantidad <input required id="furnitureStock" type="number" min="0" step="1" /></label>
+          <label>Stock minimo <input id="furnitureMin" type="number" min="0" step="1" value="0" /></label>
+          <button class="primary" type="submit">Guardar mueble</button>
+          <button class="ghost" type="button" id="clearFurniture">Limpiar</button>
+        </form>
+        <div class="panel">
+          <div class="panel-title"><h3>Stock actual</h3></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Mueble</th><th>Precio</th><th>Stock</th><th>Minimo</th><th>Estado</th><th></th></tr></thead>
+              <tbody id="furnitureRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="materiales" class="view">
+        <form id="materialForm" class="form-grid panel">
+          <input type="hidden" id="materialId" />
+          <label>Material <input required id="materialName" placeholder="Placa, tornillos..." /></label>
+          <label>Cantidad actual <input required id="materialStock" type="number" min="0" step="0.01" /></label>
+          <label>Unidad <input id="materialUnit" placeholder="unid, kg, metros" /></label>
+          <button class="primary" type="submit">Guardar material</button>
+          <button class="ghost" type="button" id="clearMaterial">Limpiar</button>
+        </form>
+        <form id="materialMoveForm" class="form-grid panel">
+          <label>Material <select required id="materialMoveItem"></select></label>
+          <label>Tipo <select id="materialMoveType"><option value="entrada">Entrada</option><option value="salida">Salida</option></select></label>
+          <label>Cantidad <input required id="materialMoveQty" type="number" min="0.01" step="0.01" /></label>
+          <label>Detalle <input id="materialMoveNote" placeholder="Compra, armado..." /></label>
+          <button class="primary" type="submit">Registrar movimiento</button>
+        </form>
+        <div class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Material</th><th>Cantidad</th><th>Unidad</th><th></th></tr></thead>
+              <tbody id="materialRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="choferes" class="view">
+        <form id="driverForm" class="form-grid panel">
+          <input type="hidden" id="driverId" />
+          <label>Nombre <input required id="driverName" placeholder="Nombre del chofer" /></label>
+          <label>Telefono <input id="driverPhone" placeholder="Opcional" /></label>
+          <button class="primary" type="submit">Guardar chofer</button>
+          <button class="ghost" type="button" id="clearDriver">Limpiar</button>
+        </form>
+        <div class="panel">
+          <div class="panel-title">
+            <h3>Panel de choferes</h3>
+            <input id="driverSearch" placeholder="Filtrar por nombre" />
+          </div>
+          <div id="driverCards" class="cards"></div>
+        </div>
+      </section>
+
+      <section id="salidas" class="view">
+        <form id="loadForm" class="panel">
+          <div class="form-grid">
+            <input type="hidden" id="loadId" />
+            <label>Fecha <input required id="loadDate" type="date" /></label>
+            <label>Chofer <select required id="loadDriver"></select></label>
+            <label>Observacion <input id="loadNote" placeholder="Opcional" /></label>
+          </div>
+          <div class="line-editor">
+            <select id="loadFurniture"></select>
+            <input id="loadQty" type="number" min="1" step="1" placeholder="Cantidad" />
+            <button class="ghost" type="button" id="addLoadLine">Agregar mueble</button>
+          </div>
+          <div id="loadLines" class="chips"></div>
+          <div class="form-actions">
+            <strong>Total carga: <span id="loadTotal">$0</span></strong>
+            <button class="primary" type="submit">Guardar salida</button>
+          </div>
+        </form>
+        <div class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Fecha</th><th>Chofer</th><th>Muebles</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+              <tbody id="loadRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="ventas" class="view">
+        <form id="saleForm" class="panel">
+          <div class="form-grid">
+            <input type="hidden" id="saleId" />
+            <label>Fecha <input required id="saleDate" type="date" /></label>
+            <label>Salida <select required id="saleLoad"></select></label>
+            <label>Mueble <select required id="saleFurniture"></select></label>
+            <label>Tipo <select id="saleType"><option value="venta">Venta</option><option value="devolucion">Devolucion</option></select></label>
+            <label>Cantidad <input required id="saleQty" type="number" min="1" step="1" /></label>
+            <label>Forma de pago <select id="salePayment"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option></select></label>
+            <label>Total <input required id="saleAmount" type="number" min="0" step="0.01" /></label>
+          </div>
+          <div class="form-actions">
+            <button class="primary" type="submit">Registrar movimiento</button>
+            <button class="ghost" type="button" id="clearSale">Limpiar</button>
+          </div>
+        </form>
+        <div class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Fecha</th><th>Chofer</th><th>Mueble</th><th>Tipo</th><th>Cant.</th><th>Pago</th><th>Total</th><th></th></tr></thead>
+              <tbody id="saleRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="rendicion" class="view">
+        <form id="settlementForm" class="panel">
+          <div class="form-grid">
+            <label>Fecha <input required id="settlementDate" type="date" /></label>
+            <label>Salida <select required id="settlementLoad"></select></label>
+            <label>Efectivo recibido <input id="settlementCash" type="number" min="0" step="0.01" value="0" /></label>
+            <label>Transferencia recibida <input id="settlementTransfer" type="number" min="0" step="0.01" value="0" /></label>
+          </div>
+          <div class="settlement-head">
+            <div>
+              <p class="eyebrow">Calculo automatico</p>
+              <h3 id="settlementTitle">Elegir una salida</h3>
+            </div>
+            <div class="settlement-total">
+              <span>Total recibido</span>
+              <strong id="settlementReceived">$0</strong>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Mueble</th>
+                  <th>Llevo</th>
+                  <th>Precio</th>
+                  <th>Volvio</th>
+                  <th>Vendido</th>
+                  <th>Total venta</th>
+                </tr>
+              </thead>
+              <tbody id="settlementRows"></tbody>
+            </table>
+          </div>
+          <div class="settlement-note" id="settlementNote"></div>
+          <div class="form-actions">
+            <button class="ghost" type="button" id="calculateSettlement">Calcular</button>
+            <button class="primary" type="submit">Cerrar salida y registrar todo</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="dinero" class="view">
+        <form id="paymentForm" class="form-grid panel">
+          <input type="hidden" id="paymentId" />
+          <label>Fecha <input required id="paymentDate" type="date" /></label>
+          <label>Chofer <select required id="paymentDriver"></select></label>
+          <label>Salida <select id="paymentLoad"></select></label>
+          <label>Efectivo <input id="paymentCash" type="number" min="0" step="0.01" value="0" /></label>
+          <label>Transferencia <input id="paymentTransfer" type="number" min="0" step="0.01" value="0" /></label>
+          <label>Detalle <input id="paymentNote" placeholder="Opcional" /></label>
+          <button class="primary" type="submit">Guardar dinero</button>
+          <button class="ghost" type="button" id="clearPayment">Limpiar</button>
+        </form>
+        <div class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Fecha</th><th>Chofer</th><th>Salida</th><th>Efectivo</th><th>Transferencia</th><th></th></tr></thead>
+              <tbody id="paymentRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="movimientos" class="view">
+        <div class="panel">
+          <div class="panel-title"><h3>Historial editable</h3></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Impacto</th></tr></thead>
+              <tbody id="movementRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
