@@ -501,7 +501,14 @@ function renderTrips() {
               <span>Volvio<strong>${returned.reduce((sum, item) => sum + item.qty, 0)}</strong></span>
               <span>Entrego<strong>${money(paid)}</strong></span>
             </div>
-            ${closed ? "" : `<button class="small" type="button" onclick="editTrip('${load.id}')">Editar salida</button>`}
+            ${
+              closed
+                ? ""
+                : `<div class="trip-actions">
+                    <button class="small" type="button" onclick="editTrip('${load.id}')">Editar salida</button>
+                    <button class="small danger" type="button" onclick="deleteTrip('${load.id}')">Eliminar viaje</button>
+                  </div>`
+            }
           </article>`;
         })
         .join("")
@@ -742,6 +749,22 @@ function editTrip(id) {
   currentTripLines = load.items.map((line) => ({ ...line }));
   document.querySelector("#viajes").scrollIntoView({ behavior: "smooth", block: "start" });
   renderTripLines();
+}
+
+function deleteTrip(id) {
+  const load = byId("loads", id);
+  if (!load) return;
+  if (loadIsClosed(load.id) || existingLoadTransactions(load.id).length) {
+    alert("Solo se pueden eliminar viajes pendientes.");
+    return;
+  }
+  const driver = byId("drivers", load.driverId);
+  const confirmed = confirm(`Eliminar el viaje pendiente de ${driver ? driver.name : "este chofer"}? El stock se devuelve automaticamente.`);
+  if (!confirmed) return;
+  reverseStockDeltaFromLoad(load);
+  state.loads = state.loads.filter((item) => item.id !== id);
+  if (document.querySelector("#tripId").value === id) resetTripForm();
+  render();
 }
 
 function stockDeltaFromLoad(load) {
