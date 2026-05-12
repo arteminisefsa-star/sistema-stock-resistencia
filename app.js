@@ -428,6 +428,10 @@ function renderTripLines() {
     return sum + line.qty;
   }, 0);
   document.querySelector("#tripTotal").textContent = `${total} muebles`;
+  const editing = Boolean(document.querySelector("#tripId").value);
+  document.querySelector("#tripFormTitle").textContent = editing ? "Editar salida" : "Nueva salida";
+  document.querySelector("#tripSubmit").textContent = editing ? "Guardar cambios" : "Guardar salida";
+  document.querySelector("#cancelTripEdit").style.display = editing ? "" : "none";
 }
 
 function tripCloseLines(load) {
@@ -497,6 +501,7 @@ function renderTrips() {
               <span>Volvio<strong>${returned.reduce((sum, item) => sum + item.qty, 0)}</strong></span>
               <span>Entrego<strong>${money(paid)}</strong></span>
             </div>
+            ${closed ? "" : `<button class="small" type="button" onclick="editTrip('${load.id}')">Editar salida</button>`}
           </article>`;
         })
         .join("")
@@ -716,6 +721,29 @@ function removeTripLine(index) {
   renderTripLines();
 }
 
+function resetTripForm() {
+  currentTripLines = [];
+  resetForm("#tripForm");
+  document.querySelector("#tripDate").value = today();
+  renderTripLines();
+}
+
+function editTrip(id) {
+  const load = byId("loads", id);
+  if (!load) return;
+  if (loadIsClosed(load.id) || existingLoadTransactions(load.id).length) {
+    alert("Solo se pueden editar salidas pendientes.");
+    return;
+  }
+  document.querySelector("#tripId").value = load.id;
+  document.querySelector("#tripDate").value = load.date;
+  document.querySelector("#tripDriver").value = load.driverId;
+  document.querySelector("#tripNote").value = load.note || "";
+  currentTripLines = load.items.map((line) => ({ ...line }));
+  document.querySelector("#viajes").scrollIntoView({ behavior: "smooth", block: "start" });
+  renderTripLines();
+}
+
 function stockDeltaFromLoad(load) {
   load.items.forEach((line) => {
     const item = byId("furniture", line.furnitureId);
@@ -861,8 +889,13 @@ document.querySelector("#addTripLine").addEventListener("click", () => {
   const qty = Number(document.querySelector("#tripQty").value);
   if (!furnitureId || qty <= 0) return;
   const furniture = byId("furniture", furnitureId);
+  const editingLoad = byId("loads", document.querySelector("#tripId").value);
+  const originalQty = editingLoad
+    ? editingLoad.items.filter((line) => line.furnitureId === furnitureId).reduce((sum, line) => sum + line.qty, 0)
+    : 0;
   const already = currentTripLines.filter((line) => line.furnitureId === furnitureId).reduce((sum, line) => sum + line.qty, 0);
-  if (furniture && qty + already > furniture.stock) return alert(`Stock disponible de ${furniture.name}: ${furniture.stock}.`);
+  const available = furniture ? furniture.stock + originalQty : 0;
+  if (furniture && qty + already > available) return alert(`Stock disponible de ${furniture.name}: ${available}.`);
   const existing = currentTripLines.find((line) => line.furnitureId === furnitureId);
   if (existing) existing.qty += qty;
   else currentTripLines.push({ furnitureId, qty });
@@ -873,7 +906,10 @@ document.querySelector("#addTripLine").addEventListener("click", () => {
 document.querySelector("#tripForm").addEventListener("submit", (event) => {
   event.preventDefault();
   if (!currentTripLines.length) return alert("Agrega al menos un mueble.");
-  const id = uid();
+  const id = document.querySelector("#tripId").value || uid();
+  const old = byId("loads", id);
+  if (old && (loadIsClosed(old.id) || existingLoadTransactions(old.id).length)) return alert("Solo se pueden editar salidas pendientes.");
+  if (old) reverseStockDeltaFromLoad(old);
   const total = currentTripLines.reduce((sum, line) => {
     return sum + line.qty;
   }, 0);
@@ -886,10 +922,8 @@ document.querySelector("#tripForm").addEventListener("submit", (event) => {
     total,
   };
   stockDeltaFromLoad(load);
-  state.loads.push(load);
-  currentTripLines = [];
-  resetForm("#tripForm");
-  document.querySelector("#tripDate").value = today();
+  state.loads = old ? state.loads.map((entry) => (entry.id === id ? load : entry)) : [...state.loads, load];
+  resetTripForm();
   render();
 });
 
@@ -1101,6 +1135,7 @@ document.querySelector("#clearDriver").addEventListener("click", () => resetForm
 document.querySelector("#clearSale").addEventListener("click", () => resetForm("#saleForm"));
 document.querySelector("#clearPayment").addEventListener("click", () => resetForm("#paymentForm"));
 document.querySelector("#clearMovements").addEventListener("click", clearMovementsOnly);
+document.querySelector("#cancelTripEdit").addEventListener("click", resetTripForm);
 document.querySelector("#saleFurniture").addEventListener("change", updateSaleAmount);
 document.querySelector("#saleQty").addEventListener("input", updateSaleAmount);
 document.querySelector("#settlementLoad").addEventListener("change", renderSettlement);

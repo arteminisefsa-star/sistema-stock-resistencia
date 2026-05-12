@@ -185,7 +185,8 @@
 
       <section id="viajes" class="view">
         <form id="tripForm" class="panel">
-          <div class="panel-title"><h3>Nueva salida</h3></div>
+          <div class="panel-title"><h3 id="tripFormTitle">Nueva salida</h3></div>
+          <input type="hidden" id="tripId" />
           <div class="form-grid">
             <label>Fecha <input required id="tripDate" type="date" /></label>
             <label>Chofer <select required id="tripDriver"></select></label>
@@ -199,7 +200,8 @@
           <div id="tripLines" class="chips"></div>
           <div class="form-actions">
             <strong>Total que lleva: <span id="tripTotal">$0</span></strong>
-            <button class="primary" type="submit">Guardar salida</button>
+            <button class="primary" type="submit" id="tripSubmit">Guardar salida</button>
+            <button class="ghost" type="button" id="cancelTripEdit">Cancelar edicion</button>
           </div>
         </form>
 
