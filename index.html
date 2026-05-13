@@ -32,6 +32,7 @@
         <button class="nav-button active" data-view="resumen" data-short="Resumen">Resumen</button>
         <button class="nav-button" data-view="muebles" data-short="Stock">Stock muebles</button>
         <button class="nav-button" data-view="viajes" data-short="Viajes">Viajes</button>
+        <button class="nav-button" data-view="despachos" data-short="Despachos">Despachos</button>
         <button class="nav-button" data-view="movimientos" data-short="Movs.">Movimientos</button>
         <button class="nav-button" data-view="choferes" data-short="Choferes">Choferes</button>
         <button class="nav-button" data-view="materiales" data-short="Materiales">Materiales</button>
@@ -245,6 +246,32 @@
         <div class="panel">
           <div class="panel-title"><h3>Viajes</h3></div>
           <div id="tripCards" class="cards"></div>
+        </div>
+      </section>
+
+      <section id="despachos" class="view">
+        <form id="dispatchForm" class="panel">
+          <div class="panel-title"><h3>Despacho entre sucursales</h3></div>
+          <div class="form-grid">
+            <label>Fecha <input required id="dispatchDate" type="date" /></label>
+            <label>Origen <input id="dispatchFrom" disabled /></label>
+            <label>Destino <input id="dispatchTo" disabled /></label>
+            <label>Observacion <input id="dispatchNote" placeholder="Opcional" /></label>
+          </div>
+          <div class="line-editor">
+            <select id="dispatchFurniture"></select>
+            <input id="dispatchQty" type="number" min="1" step="1" placeholder="Cantidad" />
+            <button class="ghost" type="button" id="addDispatchLine">Agregar</button>
+          </div>
+          <div id="dispatchLines" class="chips"></div>
+          <div class="form-actions">
+            <strong>Total despacho: <span id="dispatchTotal">0 muebles</span></strong>
+            <button class="primary" type="submit">Guardar despacho</button>
+          </div>
+        </form>
+        <div class="panel">
+          <div class="panel-title"><h3>Historial de despachos</h3></div>
+          <div id="dispatchCards" class="cards"></div>
         </div>
       </section>
 

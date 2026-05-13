@@ -23,6 +23,7 @@ const initialState = {
   payments: [],
   materialMoves: [],
   retiredStock: [],
+  dispatches: [],
 };
 
 let currentBranch = localStorage.getItem(BRANCH_KEY) || "resistencia";
@@ -31,6 +32,7 @@ let currentLoadLines = [];
 let currentTripLines = [];
 let currentTripOrders = [];
 let currentTripRetired = [];
+let currentDispatchLines = [];
 let booting = true;
 let saveTimer = null;
 
@@ -115,6 +117,7 @@ async function switchBranch(branch) {
   currentTripLines = [];
   currentTripOrders = [];
   currentTripRetired = [];
+  currentDispatchLines = [];
   booting = true;
   await loadServerState();
   booting = false;
@@ -255,6 +258,7 @@ function render() {
   renderMaterials();
   renderDrivers();
   renderTrips();
+  renderDispatches();
   renderLoads();
   renderSettlement();
   renderSales();
@@ -284,6 +288,7 @@ function renderSelects() {
   fillSelect("#loadFurniture", state.furniture, "Seleccionar mueble");
   fillSelect("#tripFurniture", state.furniture, "Seleccionar mueble");
   fillSelect("#tripOrderFurniture", state.furniture, "Seleccionar mueble");
+  fillSelect("#dispatchFurniture", state.furniture, "Seleccionar mueble");
   fillSelect("#saleFurniture", state.furniture, "Seleccionar mueble");
   fillSelect("#saleLoad", state.loads, "Seleccionar salida", formatLoadOption);
   fillSelect("#paymentLoad", state.loads, "Sin salida asignada", formatLoadOption, true);
@@ -550,6 +555,33 @@ function renderTrips() {
     : `<p class="empty">Todavia no hay viajes cargados.</p>`;
 }
 
+function renderDispatches() {
+  const toBranch = currentBranch === "formosa" ? "resistencia" : "formosa";
+  document.querySelector("#dispatchFrom").value = branches[currentBranch];
+  document.querySelector("#dispatchTo").value = branches[toBranch];
+  document.querySelector("#dispatchLines").innerHTML = currentDispatchLines.length
+    ? currentDispatchLines
+        .map((line, index) => `<span class="chip">${line.name} x ${line.qty} <button type="button" onclick="removeDispatchLine(${index})">x</button></span>`)
+        .join("")
+    : `<span class="empty">Agrega los muebles para enviar a ${branches[toBranch]}.</span>`;
+  document.querySelector("#dispatchTotal").textContent = `${currentDispatchLines.reduce((sum, line) => sum + line.qty, 0)} muebles`;
+  document.querySelector("#dispatchCards").innerHTML = (state.dispatches || []).length
+    ? state.dispatches
+        .slice()
+        .reverse()
+        .map((dispatch) => {
+          const lines = dispatch.lines.map((line) => `${line.name} x ${line.qty}`).join(", ");
+          const label = dispatch.direction === "recibido" ? `Recibido desde ${branches[dispatch.from]}` : `Enviado a ${branches[dispatch.to]}`;
+          return `<article class="driver-card trip-card">
+            <div class="panel-title"><h3>${label}</h3><span class="status ok">${dispatch.date}</span></div>
+            <p>${lines}</p>
+            ${dispatch.note ? `<p>${dispatch.note}</p>` : ""}
+          </article>`;
+        })
+        .join("")
+    : `<p class="empty">Todavia no hay despachos.</p>`;
+}
+
 function renderLoads() {
   renderLoadLines();
   document.querySelector("#loadRows").innerHTML = state.loads.length
@@ -686,6 +718,12 @@ function renderMovements() {
     : `<p class="empty">No hay muebles retirados.</p>`;
   const stockMoves = [
     ...state.loads.map((item) => ({ date: item.date, type: "Salida chofer", detail: formatLoadOption(item), impact: `-${[...item.items, ...(item.orders || [])].reduce((sum, line) => sum + line.qty, 0)} muebles` })),
+    ...(state.dispatches || []).map((item) => ({
+      date: item.date,
+      type: item.direction === "recibido" ? "Despacho recibido" : "Despacho enviado",
+      detail: item.lines.map((line) => `${line.name} x ${line.qty}`).join(", "),
+      impact: `${item.direction === "recibido" ? "+" : "-"}${item.lines.reduce((sum, line) => sum + line.qty, 0)} muebles`,
+    })),
     ...state.transactions.map((item) => {
       const furniture = byId("furniture", item.furnitureId);
       return { date: item.date, type: item.type, detail: furniture ? furniture.name : "Mueble", impact: `${item.type === "devolucion" ? "+" : "0"}${item.type === "devolucion" ? item.qty : " vendido"}` };
@@ -781,6 +819,11 @@ function removeTripOrder(index) {
 function removeTripRetired(index) {
   currentTripRetired.splice(index, 1);
   renderTripRetiredLines();
+}
+
+function removeDispatchLine(index) {
+  currentDispatchLines.splice(index, 1);
+  renderDispatches();
 }
 
 function resetTripForm() {
@@ -1017,6 +1060,23 @@ document.querySelector("#addTripRetired").addEventListener("click", () => {
   renderTripRetiredLines();
 });
 
+document.querySelector("#addDispatchLine").addEventListener("click", () => {
+  const furnitureId = document.querySelector("#dispatchFurniture").value;
+  const qty = Number(document.querySelector("#dispatchQty").value);
+  if (!furnitureId || qty <= 0) return;
+  const furniture = byId("furniture", furnitureId);
+  if (!furniture) return;
+  const alreadyAdded = currentDispatchLines
+    .filter((line) => line.furnitureId === furnitureId)
+    .reduce((sum, line) => sum + line.qty, 0);
+  if (qty + alreadyAdded > furniture.stock) return alert(`Stock disponible de ${furniture.name}: ${furniture.stock}.`);
+  const existing = currentDispatchLines.find((line) => line.furnitureId === furnitureId);
+  if (existing) existing.qty += qty;
+  else currentDispatchLines.push({ furnitureId, name: furniture.name, qty });
+  document.querySelector("#dispatchQty").value = "";
+  renderDispatches();
+});
+
 document.querySelector("#tripForm").addEventListener("submit", (event) => {
   event.preventDefault();
   if (!currentTripLines.length && !currentTripOrders.length) return alert("Agrega al menos un mueble o pedido.");
@@ -1040,6 +1100,35 @@ document.querySelector("#tripForm").addEventListener("submit", (event) => {
   state.loads = old ? state.loads.map((entry) => (entry.id === id ? load : entry)) : [...state.loads, load];
   resetTripForm();
   render();
+});
+
+document.querySelector("#dispatchForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!currentDispatchLines.length) return alert("Agrega al menos un mueble para despachar.");
+  const toBranch = currentBranch === "formosa" ? "resistencia" : "formosa";
+  const confirmed = confirm(`Enviar ${document.querySelector("#dispatchTotal").textContent} de ${branches[currentBranch]} a ${branches[toBranch]}?`);
+  if (!confirmed) return;
+  setSyncStatus("Guardando despacho...");
+  try {
+    await apiRequest("/api/dispatch", {
+      method: "POST",
+      body: JSON.stringify({
+        from: currentBranch,
+        date: document.querySelector("#dispatchDate").value,
+        note: document.querySelector("#dispatchNote").value.trim(),
+        lines: currentDispatchLines,
+      }),
+    });
+    currentDispatchLines = [];
+    resetForm("#dispatchForm");
+    document.querySelector("#dispatchDate").value = today();
+    await loadServerState();
+    render();
+  } catch (error) {
+    alert(error.message || "No se pudo guardar el despacho.");
+    setSyncStatus("Error al guardar despacho.");
+    console.error(error);
+  }
 });
 
 document.querySelector("#tripCloseForm").addEventListener("submit", (event) => {
@@ -1294,6 +1383,7 @@ async function initApp() {
   document.querySelector("#loadDate").value = today();
   document.querySelector("#tripDate").value = today();
   document.querySelector("#tripCloseDate").value = today();
+  document.querySelector("#dispatchDate").value = today();
   document.querySelector("#saleDate").value = today();
   document.querySelector("#paymentDate").value = today();
   document.querySelector("#settlementDate").value = today();

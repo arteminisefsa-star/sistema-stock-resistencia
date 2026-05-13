@@ -35,6 +35,41 @@ function selectedStateId(request) {
   return branch === "formosa" ? "control-muebles-formosa" : stateId;
 }
 
+function stateIdFromBranch(branch) {
+  return String(branch).toLowerCase() === "formosa" ? "control-muebles-formosa" : stateId;
+}
+
+function emptyState() {
+  return {
+    furniture: [],
+    materials: [],
+    drivers: [],
+    loads: [],
+    transactions: [],
+    payments: [],
+    materialMoves: [],
+    retiredStock: [],
+    dispatches: [],
+  };
+}
+
+async function readState(id, client = pool) {
+  const result = await client.query("select data from app_state where id = $1", [id]);
+  return { ...emptyState(), ...(result.rows[0] ? result.rows[0].data : {}) };
+}
+
+async function writeState(id, data, client = pool) {
+  await client.query(
+    `
+      insert into app_state (id, data, updated_at)
+      values ($1, $2, now())
+      on conflict (id)
+      do update set data = excluded.data, updated_at = now()
+    `,
+    [id, data]
+  );
+}
+
 async function ensureDatabase() {
   if (!pool) return;
   await pool.query(`
@@ -74,16 +109,55 @@ app.get("/api/state", requireAuth, async (request, response) => {
 
 app.put("/api/state", requireAuth, async (request, response) => {
   if (!pool) return response.status(500).json({ error: "Falta DATABASE_URL" });
-  await pool.query(
-    `
-      insert into app_state (id, data, updated_at)
-      values ($1, $2, now())
-      on conflict (id)
-      do update set data = excluded.data, updated_at = now()
-    `,
-    [selectedStateId(request), request.body.data || {}]
-  );
+  await writeState(selectedStateId(request), request.body.data || {});
   response.json({ ok: true });
+});
+
+app.post("/api/dispatch", requireAuth, async (request, response) => {
+  if (!pool) return response.status(500).json({ error: "Falta DATABASE_URL" });
+  const from = String(request.body.from || "").toLowerCase() === "formosa" ? "formosa" : "resistencia";
+  const to = from === "formosa" ? "resistencia" : "formosa";
+  const lines = Array.isArray(request.body.lines) ? request.body.lines : [];
+  if (!lines.length) return response.status(400).json({ error: "Agrega al menos un mueble" });
+
+  const fromId = stateIdFromBranch(from);
+  const toId = stateIdFromBranch(to);
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const fromState = await readState(fromId, client);
+    const toState = await readState(toId, client);
+    const dispatch = {
+      id: crypto.randomUUID(),
+      date: request.body.date,
+      from,
+      to,
+      note: request.body.note || "",
+      lines,
+    };
+
+    lines.forEach((line) => {
+      const qty = Number(line.qty || 0);
+      const originItem = fromState.furniture.find((item) => item.id === line.furnitureId);
+      if (!originItem || qty <= 0 || originItem.stock < qty) throw new Error(`Stock insuficiente para ${line.name}`);
+      originItem.stock -= qty;
+      const destItem = toState.furniture.find((item) => item.name.trim().toLowerCase() === line.name.trim().toLowerCase());
+      if (destItem) destItem.stock += qty;
+      else toState.furniture.push({ id: crypto.randomUUID(), name: line.name, price: 0, stock: qty, minStock: 0 });
+    });
+
+    fromState.dispatches = [...(fromState.dispatches || []), { ...dispatch, direction: "enviado" }];
+    toState.dispatches = [...(toState.dispatches || []), { ...dispatch, direction: "recibido" }];
+    await writeState(fromId, fromState, client);
+    await writeState(toId, toState, client);
+    await client.query("commit");
+    response.json({ ok: true });
+  } catch (error) {
+    await client.query("rollback");
+    response.status(400).json({ error: error.message });
+  } finally {
+    client.release();
+  }
 });
 
 app.get("*", (request, response) => {
