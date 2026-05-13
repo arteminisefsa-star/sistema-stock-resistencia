@@ -192,14 +192,22 @@
             <label>Chofer <select required id="tripDriver"></select></label>
             <label>Observacion <input id="tripNote" placeholder="Opcional" /></label>
           </div>
+          <p class="eyebrow form-caption">Carga que lleva</p>
           <div class="line-editor">
             <select id="tripFurniture"></select>
             <input id="tripQty" type="number" min="1" step="1" placeholder="Cantidad que lleva" />
             <button class="ghost" type="button" id="addTripLine">Agregar</button>
           </div>
           <div id="tripLines" class="chips"></div>
+          <p class="eyebrow form-caption">Pedidos</p>
+          <div class="line-editor">
+            <select id="tripOrderFurniture"></select>
+            <input id="tripOrderQty" type="number" min="1" step="1" placeholder="Cantidad pedido" />
+            <button class="ghost" type="button" id="addTripOrder">Agregar pedido</button>
+          </div>
+          <div id="tripOrderLines" class="chips"></div>
           <div class="form-actions">
-            <strong>Total que lleva: <span id="tripTotal">$0</span></strong>
+            <strong>Total salida: <span id="tripTotal">$0</span></strong>
             <button class="primary" type="submit" id="tripSubmit">Guardar salida</button>
             <button class="ghost" type="button" id="cancelTripEdit">Cancelar edicion</button>
           </div>
@@ -212,6 +220,13 @@
             <label>Salida pendiente <select required id="tripCloseLoad"></select></label>
           </div>
           <div id="tripReturnRows" class="return-list"></div>
+          <p class="eyebrow form-caption">Retirados</p>
+          <div class="line-editor">
+            <input id="tripRetiredName" placeholder="Mueble retirado" />
+            <input id="tripRetiredQty" type="number" min="1" step="1" placeholder="Cantidad" />
+            <button class="ghost" type="button" id="addTripRetired">Agregar retirado</button>
+          </div>
+          <div id="tripRetiredLines" class="chips"></div>
           <div class="form-grid">
             <label>Efectivo entregado <input id="tripCash" type="number" min="0" step="0.01" value="0" /></label>
             <label>Transferencia entregada <input id="tripTransfer" type="number" min="0" step="0.01" value="0" /></label>
@@ -358,6 +373,7 @@
             <h3>Historial editable</h3>
             <button class="danger" type="button" id="clearMovements">Borrar movimientos</button>
           </div>
+          <div id="retiredSummary" class="retired-summary"></div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Impacto</th></tr></thead>

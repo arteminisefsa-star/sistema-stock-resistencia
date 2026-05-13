@@ -447,6 +447,15 @@ tr:last-child td {
   margin: 14px 0;
 }
 
+.form-caption {
+  margin-top: 14px;
+  color: var(--muted);
+}
+
+.retired-summary {
+  margin: 12px 0;
+}
+
 .return-row {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) 180px 170px;
