@@ -18,6 +18,7 @@ const initialState = {
   furniture: [],
   materials: [],
   drivers: [],
+  sellers: [],
   loads: [],
   transactions: [],
   payments: [],
@@ -257,7 +258,9 @@ function render() {
   renderFurniture();
   renderMaterials();
   renderDrivers();
+  renderSellers();
   renderTrips();
+  renderRetouchStock();
   renderDispatches();
   renderLoads();
   renderSettlement();
@@ -288,6 +291,8 @@ function renderSelects() {
   fillSelect("#loadFurniture", state.furniture, "Seleccionar mueble");
   fillSelect("#tripFurniture", state.furniture, "Seleccionar mueble");
   fillSelect("#tripOrderFurniture", state.furniture, "Seleccionar mueble");
+  fillSelect("#tripRetiredFurniture", state.furniture, "Seleccionar mueble retirado");
+  fillSelect("#tripRetiredSeller", state.sellers || [], "Seleccionar vendedor");
   fillSelect("#dispatchFurniture", state.furniture, "Seleccionar mueble");
   fillSelect("#saleFurniture", state.furniture, "Seleccionar mueble");
   fillSelect("#saleLoad", state.loads, "Seleccionar salida", formatLoadOption);
@@ -412,6 +417,19 @@ function renderDrivers() {
     : `<p class="empty">No hay choferes para mostrar.</p>`;
 }
 
+function renderSellers() {
+  const sellers = state.sellers || [];
+  document.querySelector("#sellerCards").innerHTML = sellers.length
+    ? sellers
+        .map(
+          (seller) => `<article class="driver-card">
+            <div class="panel-title"><h3>${seller.name}</h3><button class="small" onclick="editSeller('${seller.id}')">Editar</button></div>
+          </article>`
+        )
+        .join("")
+    : `<p class="empty">Carga vendedores para poder asignarlos a muebles retirados.</p>`;
+}
+
 function renderLoadLines() {
   document.querySelector("#loadLines").innerHTML = currentLoadLines
     .map((line, index) => {
@@ -455,7 +473,9 @@ function renderTripLines() {
 
 function renderTripRetiredLines() {
   document.querySelector("#tripRetiredLines").innerHTML = currentTripRetired.length
-    ? currentTripRetired.map((line, index) => `<span class="chip">Retirado: ${line.name} x ${line.qty} <button type="button" onclick="removeTripRetired(${index})">x</button></span>`).join("")
+    ? currentTripRetired
+        .map((line, index) => `<span class="chip">Retirado: ${line.name} x ${line.qty} - ${line.sellerName} <button type="button" onclick="removeTripRetired(${index})">x</button></span>`)
+        .join("")
     : `<span class="empty">Agrega retirados solo si el chofer trajo muebles de clientes.</span>`;
 }
 
@@ -529,7 +549,7 @@ function renderTrips() {
             .join(", ");
           const retired = state.retiredStock
             .filter((item) => item.loadId === load.id)
-            .map((item) => `${item.name} x ${item.qty}`)
+            .map((item) => `${item.name} x ${item.qty}${item.sellerName ? ` (${item.sellerName})` : ""}`)
             .join(", ");
           return `<article class="driver-card trip-card">
             <div class="panel-title"><h3>${driver ? driver.name : "Sin chofer"}</h3><span class="status ${closed ? "ok" : "warn"}">${closed ? "Cerrado" : "Pendiente"}</span></div>
@@ -580,6 +600,27 @@ function renderDispatches() {
         })
         .join("")
     : `<p class="empty">Todavia no hay despachos.</p>`;
+}
+
+function renderRetouchStock() {
+  const items = state.retiredStock || [];
+  document.querySelector("#retouchCards").innerHTML = items.length
+    ? items
+        .slice()
+        .reverse()
+        .map((item) => {
+          const driver = byId("drivers", item.driverId);
+          const seller = item.sellerId ? (state.sellers || []).find((entry) => entry.id === item.sellerId) : null;
+          return `<article class="driver-card trip-card">
+            <div class="panel-title"><h3>${item.name}</h3><span class="status warn">Para retocar</span></div>
+            <p>${item.date} - Cantidad: ${item.qty}</p>
+            <p>Trajo: ${driver ? driver.name : "Sin chofer"}</p>
+            <p>Vendedor: ${seller ? seller.name : item.sellerName || "Sin vendedor"}</p>
+            <button class="small" type="button" onclick="moveRetiredToStock('${item.id}')">Pasar a stock</button>
+          </article>`;
+        })
+        .join("")
+    : `<p class="empty">No hay muebles retirados para retocar.</p>`;
 }
 
 function renderLoads() {
@@ -712,10 +753,10 @@ function renderMovements() {
     return acc;
   }, {});
   document.querySelector("#retiredSummary").innerHTML = Object.keys(retiredTotals).length
-    ? `<h3>Stock retirado</h3><div class="chips">${Object.entries(retiredTotals)
+    ? `<h3>Muebles retirados para retocar</h3><div class="chips">${Object.entries(retiredTotals)
         .map(([name, qty]) => `<span class="chip">${name} x ${qty}</span>`)
         .join("")}</div>`
-    : `<p class="empty">No hay muebles retirados.</p>`;
+    : `<p class="empty">No hay muebles retirados para retocar.</p>`;
   const stockMoves = [
     ...state.loads.map((item) => ({ date: item.date, type: "Salida chofer", detail: formatLoadOption(item), impact: `-${[...item.items, ...(item.orders || [])].reduce((sum, line) => sum + line.qty, 0)} muebles` })),
     ...(state.dispatches || []).map((item) => ({
@@ -732,7 +773,7 @@ function renderMovements() {
       const material = byId("materials", item.materialId);
       return { date: item.date, type: `Material ${item.type}`, detail: material ? material.name : "Material", impact: `${item.type === "entrada" ? "+" : "-"}${item.qty}` };
     }),
-    ...state.retiredStock.map((item) => ({ date: item.date, type: "Retirado", detail: item.name, impact: `+${item.qty}` })),
+    ...state.retiredStock.map((item) => ({ date: item.date, type: "Retirado para retocar", detail: `${item.name}${item.sellerName ? ` - ${item.sellerName}` : ""}`, impact: `+${item.qty}` })),
   ].sort((a, b) => b.date.localeCompare(a.date));
 
   document.querySelector("#movementRows").innerHTML = stockMoves.length
@@ -766,6 +807,13 @@ function editDriver(id) {
   document.querySelector("#driverId").value = item.id;
   document.querySelector("#driverName").value = item.name;
   document.querySelector("#driverPhone").value = item.phone || "";
+}
+
+function editSeller(id) {
+  const item = (state.sellers || []).find((seller) => seller.id === id);
+  if (!item) return;
+  document.querySelector("#sellerId").value = item.id;
+  document.querySelector("#sellerName").value = item.name;
 }
 
 function editLoad(id) {
@@ -824,6 +872,21 @@ function removeTripRetired(index) {
 function removeDispatchLine(index) {
   currentDispatchLines.splice(index, 1);
   renderDispatches();
+}
+
+function moveRetiredToStock(id) {
+  const retired = (state.retiredStock || []).find((item) => item.id === id);
+  if (!retired) return;
+  const confirmed = confirm(`Pasar ${retired.name} x ${retired.qty} al stock normal?`);
+  if (!confirmed) return;
+  let furniture = retired.furnitureId ? byId("furniture", retired.furnitureId) : null;
+  if (!furniture) {
+    furniture = state.furniture.find((item) => item.name.trim().toLowerCase() === retired.name.trim().toLowerCase());
+  }
+  if (furniture) furniture.stock += retired.qty;
+  else state.furniture.push({ id: uid(), name: retired.name, price: 0, stock: retired.qty, minStock: 0 });
+  state.retiredStock = (state.retiredStock || []).filter((item) => item.id !== id);
+  render();
 }
 
 function resetTripForm() {
@@ -1010,6 +1073,16 @@ document.querySelector("#driverForm").addEventListener("submit", (event) => {
   render();
 });
 
+document.querySelector("#sellerForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const id = document.querySelector("#sellerId").value || uid();
+  const old = (state.sellers || []).find((seller) => seller.id === id);
+  const item = { id, name: document.querySelector("#sellerName").value.trim() };
+  state.sellers = old ? state.sellers.map((entry) => (entry.id === id ? item : entry)) : [...(state.sellers || []), item];
+  resetForm("#sellerForm");
+  render();
+});
+
 document.querySelector("#addTripLine").addEventListener("click", () => {
   const furnitureId = document.querySelector("#tripFurniture").value;
   const qty = Number(document.querySelector("#tripQty").value);
@@ -1049,13 +1122,17 @@ document.querySelector("#addTripOrder").addEventListener("click", () => {
 });
 
 document.querySelector("#addTripRetired").addEventListener("click", () => {
-  const name = document.querySelector("#tripRetiredName").value.trim();
+  const furnitureId = document.querySelector("#tripRetiredFurniture").value;
+  const sellerId = document.querySelector("#tripRetiredSeller").value;
   const qty = Number(document.querySelector("#tripRetiredQty").value);
-  if (!name || qty <= 0) return;
-  const existing = currentTripRetired.find((line) => line.name.toLowerCase() === name.toLowerCase());
+  const furniture = byId("furniture", furnitureId);
+  const seller = (state.sellers || []).find((item) => item.id === sellerId);
+  if (!furniture || !seller || qty <= 0) return alert("Selecciona mueble, vendedor y cantidad.");
+  const existing = currentTripRetired.find((line) => line.furnitureId === furnitureId && line.sellerId === sellerId);
   if (existing) existing.qty += qty;
-  else currentTripRetired.push({ name, qty });
-  document.querySelector("#tripRetiredName").value = "";
+  else currentTripRetired.push({ furnitureId, name: furniture.name, sellerId, sellerName: seller.name, qty });
+  document.querySelector("#tripRetiredFurniture").value = "";
+  document.querySelector("#tripRetiredSeller").value = "";
   document.querySelector("#tripRetiredQty").value = "";
   renderTripRetiredLines();
 });
@@ -1192,7 +1269,10 @@ document.querySelector("#tripCloseForm").addEventListener("submit", (event) => {
       date,
       loadId: load.id,
       driverId: load.driverId,
+      furnitureId: line.furnitureId,
       name: line.name,
+      sellerId: line.sellerId,
+      sellerName: line.sellerName,
       qty: line.qty,
     });
   });
@@ -1363,6 +1443,7 @@ document.querySelector("#settlementForm").addEventListener("submit", (event) => 
 document.querySelector("#clearFurniture").addEventListener("click", () => resetForm("#furnitureForm"));
 document.querySelector("#clearMaterial").addEventListener("click", () => resetForm("#materialForm"));
 document.querySelector("#clearDriver").addEventListener("click", () => resetForm("#driverForm"));
+document.querySelector("#clearSeller").addEventListener("click", () => resetForm("#sellerForm"));
 document.querySelector("#clearSale").addEventListener("click", () => resetForm("#saleForm"));
 document.querySelector("#clearPayment").addEventListener("click", () => resetForm("#paymentForm"));
 document.querySelector("#clearMovements").addEventListener("click", clearMovementsOnly);

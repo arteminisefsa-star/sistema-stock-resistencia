@@ -44,6 +44,7 @@ function emptyState() {
     furniture: [],
     materials: [],
     drivers: [],
+    sellers: [],
     loads: [],
     transactions: [],
     payments: [],
