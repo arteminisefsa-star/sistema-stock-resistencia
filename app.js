@@ -274,7 +274,7 @@ function loadHasClosePayment(loadId) {
 function loadIsClosed(loadId) {
   const load = byId("loads", loadId);
   if (!load) return false;
-  return Boolean(load.closedAt || load.closedDate || loadHasClosePayment(loadId));
+  return Boolean(load.closedAt || load.closedDate);
 }
 
 function driverStats(driverId) {
@@ -532,7 +532,9 @@ function renderTripRetiredLines() {
 
 function tripCloseLines(load) {
   if (!load) return [];
-  return pendingLoadedLines(load).map((line) => {
+  const lines = pendingLoadedLines(load);
+  const closeLines = lines.length ? lines : loadedLines(load);
+  return closeLines.map((line) => {
     const input = document.querySelector(`[data-trip-returned="${line.furnitureId}"]`);
     const returned = Math.min(line.loaded, Math.max(0, Number(input ? input.value : 0)));
     const sold = line.loaded - returned;
@@ -824,7 +826,7 @@ function renderMovements() {
       type: "Salida chofer",
       detail: formatLoadOption(item),
       impact: `-${[...item.items, ...(item.orders || [])].reduce((sum, line) => sum + line.qty, 0)} muebles`,
-      action: loadIsClosed(item.id) ? "" : `<button class="small" type="button" onclick="prepareTripClose('${item.id}')">Cerrar</button>`,
+      action: `<button class="small" type="button" onclick="prepareTripClose('${item.id}')">${loadIsClosed(item.id) ? "Ver" : "Cerrar"}</button>`,
     })),
     ...(state.dispatches || []).map((item) => ({
       date: item.date,
@@ -942,6 +944,11 @@ function removeDispatchLine(index) {
 }
 
 function prepareTripClose(id) {
+  const load = byId("loads", id);
+  const select = document.querySelector("#tripCloseLoad");
+  if (load && select && !Array.from(select.options).some((option) => option.value === id)) {
+    select.insertAdjacentHTML("beforeend", `<option value="${id}">${formatLoadOption(load)}</option>`);
+  }
   document.querySelectorAll(".nav-button, .view").forEach((item) => item.classList.remove("active"));
   const tripButton = document.querySelector('[data-view="viajes"]');
   if (tripButton) tripButton.classList.add("active");
