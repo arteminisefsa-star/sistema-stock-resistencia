@@ -107,6 +107,34 @@ async function ensureDatabase() {
   `);
 }
 
+async function syncCatalogFromFormosa() {
+  if (!pool) return;
+  const sourceBranch = "formosa";
+  const sourceState = await readState(stateIdFromBranch(sourceBranch));
+  const sourceFurniture = (sourceState.furniture || []).filter((item) => String(item.name || "").trim());
+  if (!sourceFurniture.length) return;
+
+  const targetBranches = Object.keys(branches).filter((branch) => branch !== sourceBranch);
+  for (const branch of targetBranches) {
+    const id = stateIdFromBranch(branch);
+    const branchState = await readState(id);
+    const existingNames = new Set((branchState.furniture || []).map((item) => String(item.name || "").trim().toLowerCase()).filter(Boolean));
+    const missing = sourceFurniture
+      .filter((item) => !existingNames.has(String(item.name || "").trim().toLowerCase()))
+      .map((item) => ({
+        id: crypto.randomUUID(),
+        name: String(item.name || "").trim(),
+        price: 0,
+        stock: 0,
+        minStock: 0,
+      }));
+    if (!missing.length) continue;
+    branchState.furniture = [...(branchState.furniture || []), ...missing];
+    await writeState(id, branchState);
+    console.log(`Catalogo sincronizado en ${branch}: ${missing.length} muebles agregados con stock 0`);
+  }
+}
+
 app.get("/api/session", (request, response) => {
   response.json({
     authRequired: Boolean(appPassword),
@@ -136,6 +164,12 @@ app.get("/api/state", requireAuth, async (request, response) => {
 app.put("/api/state", requireAuth, async (request, response) => {
   if (!pool) return response.status(500).json({ error: "Falta DATABASE_URL" });
   await writeState(selectedStateId(request), request.body.data || {});
+  response.json({ ok: true });
+});
+
+app.post("/api/sync-catalog", requireAuth, async (request, response) => {
+  if (!pool) return response.status(500).json({ error: "Falta DATABASE_URL" });
+  await syncCatalogFromFormosa();
   response.json({ ok: true });
 });
 
@@ -192,6 +226,7 @@ app.get("*", (request, response) => {
 });
 
 ensureDatabase()
+  .then(syncCatalogFromFormosa)
   .then(() => {
     app.listen(port, () => {
       console.log(`Sistema online escuchando en puerto ${port}`);

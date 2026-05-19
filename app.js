@@ -169,6 +169,10 @@ function dateInRange(dateValue) {
   return true;
 }
 
+function selectedMovementDate() {
+  return document.querySelector("#filterTo").value || document.querySelector("#filterFrom").value || today();
+}
+
 function setRange(range) {
   const now = new Date();
   const start = new Date(now);
@@ -819,35 +823,54 @@ function renderMovements() {
         .map(([name, qty]) => `<span class="chip">${name} x ${qty}</span>`)
         .join("")}</div>`
     : `<p class="empty">No hay muebles retirados para retocar.</p>`;
+  const targetDate = selectedMovementDate();
   const stockMoves = [
-    ...state.loads.map((item) => ({
+    ...state.loads
+      .filter((item) => dateInRange(item.date) || !loadIsClosed(item.id))
+      .map((item) => ({
       id: item.id,
       date: item.date,
       type: "Salida chofer",
       detail: formatLoadOption(item),
       impact: `-${[...item.items, ...(item.orders || [])].reduce((sum, line) => sum + line.qty, 0)} muebles`,
-      action: `<button class="small" type="button" onclick="prepareTripClose('${item.id}')">${loadIsClosed(item.id) ? "Ver" : "Cerrar"}</button>`,
+      action: `<button class="small" type="button" onclick="prepareTripClose('${item.id}')">${loadIsClosed(item.id) ? "Ver" : "Cerrar"}</button>${
+        item.date !== targetDate ? ` <button class="small" type="button" onclick="moveLoadToSelectedDate('${item.id}')">Pasar a ${targetDate}</button>` : ""
+      }`,
     })),
-    ...(state.dispatches || []).map((item) => ({
+    ...(state.dispatches || []).filter((item) => dateInRange(item.date)).map((item) => ({
       date: item.date,
       type: item.direction === "recibido" ? "Despacho recibido" : "Despacho enviado",
       detail: item.lines.map((line) => `${line.name} x ${line.qty}`).join(", "),
       impact: `${item.direction === "recibido" ? "+" : "-"}${item.lines.reduce((sum, line) => sum + line.qty, 0)} muebles`,
     })),
-    ...state.transactions.map((item) => {
+    ...state.transactions.filter((item) => dateInRange(item.date)).map((item) => {
       const furniture = byId("furniture", item.furnitureId);
       return { date: item.date, type: item.type, detail: furniture ? furniture.name : "Mueble", impact: `${item.type === "devolucion" ? "+" : "0"}${item.type === "devolucion" ? item.qty : " vendido"}` };
     }),
-    ...state.materialMoves.map((item) => {
+    ...state.materialMoves.filter((item) => dateInRange(item.date)).map((item) => {
       const material = byId("materials", item.materialId);
       return { date: item.date, type: `Material ${item.type}`, detail: material ? material.name : "Material", impact: `${item.type === "entrada" ? "+" : "-"}${item.qty}` };
     }),
-    ...state.retiredStock.map((item) => ({ date: item.date, type: "Retirado para retocar", detail: `${item.name}${item.sellerName ? ` - ${item.sellerName}` : ""}`, impact: `+${item.qty}` })),
+    ...state.retiredStock.filter((item) => dateInRange(item.date)).map((item) => ({ date: item.date, type: "Retirado para retocar", detail: `${item.name}${item.sellerName ? ` - ${item.sellerName}` : ""}`, impact: `+${item.qty}` })),
   ].sort((a, b) => b.date.localeCompare(a.date));
 
   document.querySelector("#movementRows").innerHTML = stockMoves.length
     ? stockMoves.map((item) => `<tr><td>${item.date}</td><td>${item.type}</td><td>${item.detail}</td><td>${item.impact}</td><td>${item.action || ""}</td></tr>`).join("")
     : `<tr><td class="empty" colspan="5">Los movimientos van a aparecer aca.</td></tr>`;
+}
+
+function moveLoadToSelectedDate(id) {
+  const load = byId("loads", id);
+  if (!load) return;
+  const targetDate = selectedMovementDate();
+  const driver = byId("drivers", load.driverId);
+  const confirmed = confirm(`Pasar la salida de ${driver ? driver.name : "este chofer"} del ${load.date} al ${targetDate}? Tambien se actualizan sus ventas, devoluciones, pagos y retirados asociados.`);
+  if (!confirmed) return;
+  state.loads = state.loads.map((item) => (item.id === id ? { ...item, date: targetDate } : item));
+  state.transactions = state.transactions.map((item) => (item.loadId === id ? { ...item, date: targetDate } : item));
+  state.payments = state.payments.map((item) => (item.loadId === id ? { ...item, date: targetDate } : item));
+  state.retiredStock = (state.retiredStock || []).map((item) => (item.loadId === id ? { ...item, date: targetDate } : item));
+  render();
 }
 
 function resetForm(formId) {

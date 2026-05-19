@@ -39,6 +39,9 @@ https://github.com/arteminisefsa-star/sistema-stock-resistencia
   - Resistencia
 - Cada localidad guarda datos separados en la misma app.
 - En despachos ahora se elige la localidad destino.
+- Formosa se mantiene como localidad con sus datos existentes.
+- Al iniciar el servidor, el catalogo de muebles de Formosa se copia a las demas localidades con stock 0, sin tocar Formosa ni stocks existentes.
+- En Movimientos, las salidas abiertas fuera del filtro se muestran con opcion para pasarlas a la fecha filtrada.
 
 ## Archivos modificados que hay que subir a GitHub
 

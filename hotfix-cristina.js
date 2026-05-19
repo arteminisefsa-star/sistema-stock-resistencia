@@ -43,6 +43,10 @@
     if (select && !select.value && select.options.length > 1) select.selectedIndex = 1;
   }
 
+  function targetMovementDate() {
+    return document.querySelector("#filterTo").value || document.querySelector("#filterFrom").value || today();
+  }
+
   function txQty(loadId, furnitureId, type, predicate = () => true) {
     return state.transactions
       .filter((item) => item.loadId === loadId && item.furnitureId === furnitureId && item.type === type && predicate(item))
@@ -210,27 +214,44 @@
       : `<p class="empty">No hay muebles retirados para retocar.</p>`;
     const head = document.querySelector("#movimientos thead tr");
     if (head && head.children.length < 5) head.insertAdjacentHTML("beforeend", "<th></th>");
+    const selectedDate = targetMovementDate();
     const moves = [
-      ...state.loads.map((item) => ({
+      ...state.loads.filter((item) => dateInRange(item.date) || !loadIsClosed(item.id)).map((item) => ({
         date: item.date,
         type: "Salida chofer",
         detail: formatLoadOption(item),
         impact: `-${[...(item.items || []), ...(item.orders || [])].reduce((sum, line) => sum + line.qty, 0)} muebles`,
-        action: `<button class="small" type="button" onclick="prepareTripClose('${item.id}')">${loadIsClosed(item.id) ? "Ver" : "Cerrar"}</button>`,
+        action: `<button class="small" type="button" onclick="prepareTripClose('${item.id}')">${loadIsClosed(item.id) ? "Ver" : "Cerrar"}</button>${
+          item.date !== selectedDate ? ` <button class="small" type="button" onclick="moveLoadToSelectedDate('${item.id}')">Pasar a ${selectedDate}</button>` : ""
+        }`,
       })),
-      ...state.transactions.map((item) => {
+      ...state.transactions.filter((item) => dateInRange(item.date)).map((item) => {
         const furniture = byId("furniture", item.furnitureId);
         return { date: item.date, type: item.type, detail: furniture ? furniture.name : "Mueble", impact: `${item.type === "devolucion" ? "+" : "0"}${item.type === "devolucion" ? item.qty : " vendido"}` };
       }),
-      ...state.materialMoves.map((item) => {
+      ...state.materialMoves.filter((item) => dateInRange(item.date)).map((item) => {
         const material = byId("materials", item.materialId);
         return { date: item.date, type: `Material ${item.type}`, detail: material ? material.name : "Material", impact: `${item.type === "entrada" ? "+" : "-"}${item.qty}` };
       }),
-      ...state.retiredStock.map((item) => ({ date: item.date, type: "Retirado para retocar", detail: `${item.name}${item.sellerName ? ` - ${item.sellerName}` : ""}`, impact: `+${item.qty}` })),
+      ...state.retiredStock.filter((item) => dateInRange(item.date)).map((item) => ({ date: item.date, type: "Retirado para retocar", detail: `${item.name}${item.sellerName ? ` - ${item.sellerName}` : ""}`, impact: `+${item.qty}` })),
     ].sort((a, b) => b.date.localeCompare(a.date));
     document.querySelector("#movementRows").innerHTML = moves.length
       ? moves.map((item) => `<tr><td>${item.date}</td><td>${item.type}</td><td>${item.detail}</td><td>${item.impact}</td><td>${item.action || ""}</td></tr>`).join("")
       : `<tr><td class="empty" colspan="5">Los movimientos van a aparecer aca.</td></tr>`;
+  };
+
+  moveLoadToSelectedDate = function (id) {
+    const load = byId("loads", id);
+    if (!load) return;
+    const selectedDate = targetMovementDate();
+    const driver = byId("drivers", load.driverId);
+    const confirmed = confirm(`Pasar la salida de ${driver ? driver.name : "este chofer"} del ${load.date} al ${selectedDate}? Tambien se actualizan sus ventas, devoluciones, pagos y retirados asociados.`);
+    if (!confirmed) return;
+    state.loads = state.loads.map((item) => (item.id === id ? { ...item, date: selectedDate } : item));
+    state.transactions = state.transactions.map((item) => (item.loadId === id ? { ...item, date: selectedDate } : item));
+    state.payments = state.payments.map((item) => (item.loadId === id ? { ...item, date: selectedDate } : item));
+    state.retiredStock = (state.retiredStock || []).map((item) => (item.loadId === id ? { ...item, date: selectedDate } : item));
+    render();
   };
 
   prepareTripClose = function (id) {
