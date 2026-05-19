@@ -12,10 +12,14 @@
         <p class="eyebrow">Acceso privado</p>
         <h1>Control de Muebles</h1>
         <label>Contrasena <input required id="loginPassword" type="password" autocomplete="current-password" /></label>
-        <label>Provincia
+        <label>Localidad
           <select id="loginBranch">
+            <option value="el-colorado">El Colorado</option>
+            <option value="laguna-blanca">Laguna Blanca</option>
+            <option value="pirane">Pirane</option>
+            <option value="clorinda">Clorinda</option>
+            <option value="fontana">Fontana</option>
             <option value="resistencia">Resistencia</option>
-            <option value="formosa">Formosa</option>
           </select>
         </label>
         <button class="primary" type="submit">Ingresar</button>
@@ -48,8 +52,12 @@
           <p class="sync-status"><span id="branchStatus">Resistencia</span> - <span id="syncStatus">Iniciando...</span></p>
         </div>
         <select class="branch-switch" id="branchSwitch">
+          <option value="el-colorado">El Colorado</option>
+          <option value="laguna-blanca">Laguna Blanca</option>
+          <option value="pirane">Pirane</option>
+          <option value="clorinda">Clorinda</option>
+          <option value="fontana">Fontana</option>
           <option value="resistencia">Resistencia</option>
-          <option value="formosa">Formosa</option>
         </select>
         <button class="filter-toggle" id="filterToggle" type="button">Filtros</button>
         <div class="date-filter">
@@ -274,7 +282,7 @@
           <div class="form-grid">
             <label>Fecha <input required id="dispatchDate" type="date" /></label>
             <label>Origen <input id="dispatchFrom" disabled /></label>
-            <label>Destino <input id="dispatchTo" disabled /></label>
+            <label>Destino <select required id="dispatchTo"></select></label>
             <label>Observacion <input id="dispatchNote" placeholder="Opcional" /></label>
           </div>
           <div class="line-editor">
@@ -422,7 +430,7 @@
           <div id="retiredSummary" class="retired-summary"></div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Impacto</th></tr></thead>
+              <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Impacto</th><th></th></tr></thead>
               <tbody id="movementRows"></tbody>
             </table>
           </div>

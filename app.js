@@ -1,9 +1,20 @@
 const STORE_KEY = "control-muebles-v1";
 const BRANCH_KEY = "control-muebles-branch";
 const branches = {
+  "el-colorado": "El Colorado",
+  "laguna-blanca": "Laguna Blanca",
+  pirane: "Pirane",
+  clorinda: "Clorinda",
+  fontana: "Fontana",
   resistencia: "Resistencia",
-  formosa: "Formosa",
 };
+const defaultBranch = "resistencia";
+const normalizeBranch = (branch) => (branches[branch] ? branch : defaultBranch);
+const branchOptions = (selected = currentBranch, excluded = "") =>
+  Object.entries(branches)
+    .filter(([id]) => id !== excluded)
+    .map(([id, name]) => `<option value="${id}"${id === selected ? " selected" : ""}>${name}</option>`)
+    .join("");
 
 const today = () => {
   const date = new Date();
@@ -27,7 +38,7 @@ const initialState = {
   dispatches: [],
 };
 
-let currentBranch = localStorage.getItem(BRANCH_KEY) || "resistencia";
+let currentBranch = normalizeBranch(localStorage.getItem(BRANCH_KEY) || defaultBranch);
 let state = loadLocalState();
 let currentLoadLines = [];
 let currentTripLines = [];
@@ -51,7 +62,7 @@ function setSyncStatus(message) {
   const status = document.querySelector("#syncStatus");
   if (status) status.textContent = message;
   const branchStatus = document.querySelector("#branchStatus");
-  if (branchStatus) branchStatus.textContent = branches[currentBranch] || "Resistencia";
+  if (branchStatus) branchStatus.textContent = branches[currentBranch] || branches[defaultBranch];
 }
 
 function showLogin(message = "") {
@@ -109,7 +120,7 @@ async function saveServerState() {
 }
 
 async function switchBranch(branch) {
-  currentBranch = branch === "formosa" ? "formosa" : "resistencia";
+  currentBranch = normalizeBranch(branch);
   localStorage.setItem(BRANCH_KEY, currentBranch);
   document.querySelector("#loginBranch").value = currentBranch;
   document.querySelector("#branchSwitch").value = currentBranch;
@@ -220,16 +231,49 @@ function loadedLines(load) {
   });
 }
 
+function loadTransactionQty(loadId, furnitureId, type, predicate = () => true) {
+  return existingLoadTransactions(loadId)
+    .filter((item) => item.furnitureId === furnitureId && item.type === type && predicate(item))
+    .reduce((sum, item) => sum + item.qty, 0);
+}
+
+function pendingLoadedLines(load) {
+  return loadedLines(load)
+    .map((line) => {
+      const sold = loadTransactionQty(load.id, line.furnitureId, "venta", (item) => item.note !== "Pedido");
+      const returned = loadTransactionQty(load.id, line.furnitureId, "devolucion");
+      const pending = Math.max(0, line.loaded - sold - returned);
+      return { ...line, originalLoaded: line.loaded, loaded: pending, alreadyMoved: sold + returned };
+    })
+    .filter((line) => line.loaded > 0);
+}
+
+function pendingOrderLines(load) {
+  const orderTotals = (load.orders || []).reduce((acc, line) => {
+    acc[line.furnitureId] = (acc[line.furnitureId] || 0) + line.qty;
+    return acc;
+  }, {});
+  return Object.entries(orderTotals)
+    .map(([furnitureId, qty]) => {
+      const furniture = byId("furniture", furnitureId);
+      const sold = loadTransactionQty(load.id, furnitureId, "venta", (item) => item.note === "Pedido");
+      return { furnitureId, name: furniture ? furniture.name : "Mueble", qty: Math.max(0, qty - sold) };
+    })
+    .filter((line) => line.qty > 0);
+}
+
 function existingLoadTransactions(loadId) {
   return state.transactions.filter((item) => item.loadId === loadId);
+}
+
+function loadHasClosePayment(loadId) {
+  return state.payments.some((item) => item.loadId === loadId && String(item.note || "").toLowerCase().includes("cierre"));
 }
 
 function loadIsClosed(loadId) {
   const load = byId("loads", loadId);
   if (!load) return false;
-  const moved = existingLoadTransactions(loadId).reduce((sum, item) => sum + item.qty, 0);
-  const loaded = [...load.items, ...(load.orders || [])].reduce((sum, item) => sum + item.qty, 0);
-  return loaded > 0 && moved >= loaded;
+  return Boolean(load.closedAt || load.closedDate || loadHasClosePayment(loadId));
 }
 
 function driverStats(driverId) {
@@ -299,6 +343,7 @@ function renderSelects() {
   fillSelect("#paymentLoad", state.loads, "Sin salida asignada", formatLoadOption, true);
   fillSelect("#settlementLoad", state.loads.filter((load) => !loadIsClosed(load.id)), "Seleccionar salida pendiente", formatLoadOption);
   fillSelect("#tripCloseLoad", state.loads.filter((load) => !loadIsClosed(load.id)), "Seleccionar salida pendiente", formatLoadOption);
+  selectFirstPendingLoad("#tripCloseLoad");
 }
 
 function fillSelect(selector, items, emptyLabel, formatter, allowEmpty = false) {
@@ -309,6 +354,11 @@ function fillSelect(selector, items, emptyLabel, formatter, allowEmpty = false) 
     .map((item) => `<option value="${item.id}">${formatter ? formatter(item) : item.name}</option>`)
     .join("")}`;
   select.value = items.some((item) => item.id === current) || allowEmpty ? current : "";
+}
+
+function selectFirstPendingLoad(selector) {
+  const select = document.querySelector(selector);
+  if (select && !select.value && select.options.length > 1) select.selectedIndex = 1;
 }
 
 function selectedFurniturePrice() {
@@ -481,7 +531,7 @@ function renderTripRetiredLines() {
 
 function tripCloseLines(load) {
   if (!load) return [];
-  return loadedLines(load).map((line) => {
+  return pendingLoadedLines(load).map((line) => {
     const input = document.querySelector(`[data-trip-returned="${line.furnitureId}"]`);
     const returned = Math.min(line.loaded, Math.max(0, Number(input ? input.value : 0)));
     const sold = line.loaded - returned;
@@ -490,6 +540,7 @@ function tripCloseLines(load) {
 }
 
 function renderTripClose() {
+  selectFirstPendingLoad("#tripCloseLoad");
   const load = byId("loads", document.querySelector("#tripCloseLoad").value);
   const cashInput = document.querySelector("#tripCash");
   const transferInput = document.querySelector("#tripTransfer");
@@ -508,16 +559,18 @@ function renderTripClose() {
   const cash = Number(cashInput.value || 0);
   const transfer = Number(transferInput.value || 0);
   const paidTotal = cash + transfer;
-  const orderQty = (load.orders || []).reduce((sum, line) => sum + line.qty, 0);
-  document.querySelector("#tripReturnRows").innerHTML = lines
-    .map(
-      (line) => `<article class="return-row">
-        <div><strong>${line.name}</strong><span>Llevo ${line.loaded}</span></div>
+  const orderQty = pendingOrderLines(load).reduce((sum, line) => sum + line.qty, 0);
+  document.querySelector("#tripReturnRows").innerHTML = lines.length
+    ? lines
+        .map(
+          (line) => `<article class="return-row">
+        <div><strong>${line.name}</strong><span>Pendiente ${line.loaded}${line.alreadyMoved ? ` de ${line.originalLoaded}` : ""}</span></div>
         <label>Volvio con <input data-trip-returned="${line.furnitureId}" type="number" min="0" max="${line.loaded}" step="1" value="${line.returned}" /></label>
         <div class="return-result"><span>Vendio</span><strong>${line.sold}</strong></div>
       </article>`
-    )
-    .join("");
+        )
+        .join("")
+    : `<p class="empty">No quedan muebles cargados pendientes. Podes registrar el dinero, retirados o cerrar el viaje.</p>`;
   document.querySelector("#tripCashTotal").textContent = money(cash);
   document.querySelector("#tripTransferTotal").textContent = money(transfer);
   document.querySelector("#tripPaidTotal").textContent = money(paidTotal);
@@ -565,6 +618,7 @@ function renderTrips() {
               closed
                 ? ""
                 : `<div class="trip-actions">
+                    <button class="small" type="button" onclick="prepareTripClose('${load.id}')">Cerrar viaje</button>
                     <button class="small" type="button" onclick="editTrip('${load.id}')">Editar salida</button>
                     <button class="small danger" type="button" onclick="deleteTrip('${load.id}')">Eliminar viaje</button>
                   </div>`
@@ -576,9 +630,11 @@ function renderTrips() {
 }
 
 function renderDispatches() {
-  const toBranch = currentBranch === "formosa" ? "resistencia" : "formosa";
+  const dispatchTo = document.querySelector("#dispatchTo");
+  const currentTo = dispatchTo.value && dispatchTo.value !== currentBranch ? dispatchTo.value : "";
+  const toBranch = currentTo || Object.keys(branches).find((id) => id !== currentBranch) || defaultBranch;
   document.querySelector("#dispatchFrom").value = branches[currentBranch];
-  document.querySelector("#dispatchTo").value = branches[toBranch];
+  dispatchTo.innerHTML = branchOptions(toBranch, currentBranch);
   document.querySelector("#dispatchLines").innerHTML = currentDispatchLines.length
     ? currentDispatchLines
         .map((line, index) => `<span class="chip">${line.name} x ${line.qty} <button type="button" onclick="removeDispatchLine(${index})">x</button></span>`)
@@ -591,7 +647,10 @@ function renderDispatches() {
         .reverse()
         .map((dispatch) => {
           const lines = dispatch.lines.map((line) => `${line.name} x ${line.qty}`).join(", ");
-          const label = dispatch.direction === "recibido" ? `Recibido desde ${branches[dispatch.from]}` : `Enviado a ${branches[dispatch.to]}`;
+          const label =
+            dispatch.direction === "recibido"
+              ? `Recibido desde ${branches[dispatch.from] || dispatch.from}`
+              : `Enviado a ${branches[dispatch.to] || dispatch.to}`;
           return `<article class="driver-card trip-card">
             <div class="panel-title"><h3>${label}</h3><span class="status ok">${dispatch.date}</span></div>
             <p>${lines}</p>
@@ -758,7 +817,14 @@ function renderMovements() {
         .join("")}</div>`
     : `<p class="empty">No hay muebles retirados para retocar.</p>`;
   const stockMoves = [
-    ...state.loads.map((item) => ({ date: item.date, type: "Salida chofer", detail: formatLoadOption(item), impact: `-${[...item.items, ...(item.orders || [])].reduce((sum, line) => sum + line.qty, 0)} muebles` })),
+    ...state.loads.map((item) => ({
+      id: item.id,
+      date: item.date,
+      type: "Salida chofer",
+      detail: formatLoadOption(item),
+      impact: `-${[...item.items, ...(item.orders || [])].reduce((sum, line) => sum + line.qty, 0)} muebles`,
+      action: loadIsClosed(item.id) ? "" : `<button class="small" type="button" onclick="prepareTripClose('${item.id}')">Cerrar</button>`,
+    })),
     ...(state.dispatches || []).map((item) => ({
       date: item.date,
       type: item.direction === "recibido" ? "Despacho recibido" : "Despacho enviado",
@@ -777,8 +843,8 @@ function renderMovements() {
   ].sort((a, b) => b.date.localeCompare(a.date));
 
   document.querySelector("#movementRows").innerHTML = stockMoves.length
-    ? stockMoves.map((item) => `<tr><td>${item.date}</td><td>${item.type}</td><td>${item.detail}</td><td>${item.impact}</td></tr>`).join("")
-    : `<tr><td class="empty" colspan="4">Los movimientos van a aparecer aca.</td></tr>`;
+    ? stockMoves.map((item) => `<tr><td>${item.date}</td><td>${item.type}</td><td>${item.detail}</td><td>${item.impact}</td><td>${item.action || ""}</td></tr>`).join("")
+    : `<tr><td class="empty" colspan="5">Los movimientos van a aparecer aca.</td></tr>`;
 }
 
 function resetForm(formId) {
@@ -872,6 +938,17 @@ function removeTripRetired(index) {
 function removeDispatchLine(index) {
   currentDispatchLines.splice(index, 1);
   renderDispatches();
+}
+
+function prepareTripClose(id) {
+  document.querySelectorAll(".nav-button, .view").forEach((item) => item.classList.remove("active"));
+  const tripButton = document.querySelector('[data-view="viajes"]');
+  if (tripButton) tripButton.classList.add("active");
+  document.querySelector("#viajes").classList.add("active");
+  document.querySelector("#viewTitle").textContent = "Viajes";
+  document.querySelector("#tripCloseLoad").value = id;
+  renderTripClose();
+  document.querySelector("#tripCloseForm").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function moveRetiredToStock(id) {
@@ -997,10 +1074,11 @@ document.querySelector("#filterClose").addEventListener("click", () => {
 document.querySelector("#branchSwitch").addEventListener("change", (event) => {
   switchBranch(event.target.value);
 });
+document.querySelector("#dispatchTo").addEventListener("change", renderDispatches);
 document.querySelector("#loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const password = document.querySelector("#loginPassword").value;
-  currentBranch = document.querySelector("#loginBranch").value;
+  currentBranch = normalizeBranch(document.querySelector("#loginBranch").value);
   localStorage.setItem(BRANCH_KEY, currentBranch);
   document.querySelector("#branchSwitch").value = currentBranch;
   document.querySelector("#loginMessage").textContent = "Ingresando...";
@@ -1182,7 +1260,8 @@ document.querySelector("#tripForm").addEventListener("submit", (event) => {
 document.querySelector("#dispatchForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!currentDispatchLines.length) return alert("Agrega al menos un mueble para despachar.");
-  const toBranch = currentBranch === "formosa" ? "resistencia" : "formosa";
+  const toBranch = normalizeBranch(document.querySelector("#dispatchTo").value);
+  if (toBranch === currentBranch) return alert("Selecciona una localidad de destino distinta al origen.");
   const confirmed = confirm(`Enviar ${document.querySelector("#dispatchTotal").textContent} de ${branches[currentBranch]} a ${branches[toBranch]}?`);
   if (!confirmed) return;
   setSyncStatus("Guardando despacho...");
@@ -1191,6 +1270,7 @@ document.querySelector("#dispatchForm").addEventListener("submit", async (event)
       method: "POST",
       body: JSON.stringify({
         from: currentBranch,
+        to: toBranch,
         date: document.querySelector("#dispatchDate").value,
         note: document.querySelector("#dispatchNote").value.trim(),
         lines: currentDispatchLines,
@@ -1212,11 +1292,12 @@ document.querySelector("#tripCloseForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const load = byId("loads", document.querySelector("#tripCloseLoad").value);
   if (!load) return alert("Selecciona una salida pendiente.");
-  if (loadIsClosed(load.id) || existingLoadTransactions(load.id).length) return alert("Esta salida ya fue cerrada.");
+  if (loadIsClosed(load.id)) return alert("Esta salida ya fue cerrada.");
 
   const cash = Number(document.querySelector("#tripCash").value || 0);
   const transfer = Number(document.querySelector("#tripTransfer").value || 0);
   const lines = tripCloseLines(load);
+  const orderLines = pendingOrderLines(load);
   if (lines.some((line) => line.returned < 0 || line.returned > line.loaded)) return alert("Revisa las cantidades que volvieron.");
 
   const date = document.querySelector("#tripCloseDate").value;
@@ -1248,7 +1329,7 @@ document.querySelector("#tripCloseForm").addEventListener("submit", (event) => {
       state.transactions.push(transaction);
     }
   });
-  (load.orders || []).forEach((line) => {
+  orderLines.forEach((line) => {
     if (line.qty > 0) {
       state.transactions.push({
         id: uid(),
@@ -1286,6 +1367,7 @@ document.querySelector("#tripCloseForm").addEventListener("submit", (event) => {
     transfer,
     note: "Cierre de viaje",
   });
+  state.loads = state.loads.map((entry) => (entry.id === load.id ? { ...entry, closedAt: date } : entry));
 
   resetForm("#tripCloseForm");
   document.querySelector("#tripCloseDate").value = today();
@@ -1434,6 +1516,7 @@ document.querySelector("#settlementForm").addEventListener("submit", (event) => 
     transfer,
     note: "Cierre automatico de salida",
   });
+  state.loads = state.loads.map((entry) => (entry.id === load.id ? { ...entry, closedAt: date } : entry));
 
   resetForm("#settlementForm");
   document.querySelector("#settlementDate").value = today();
@@ -1459,6 +1542,8 @@ document.querySelector("#tripCash").addEventListener("input", renderTripClose);
 document.querySelector("#tripTransfer").addEventListener("input", renderTripClose);
 
 async function initApp() {
+  document.querySelector("#loginBranch").innerHTML = branchOptions(currentBranch);
+  document.querySelector("#branchSwitch").innerHTML = branchOptions(currentBranch);
   document.querySelector("#loginBranch").value = currentBranch;
   document.querySelector("#branchSwitch").value = currentBranch;
   document.querySelector("#loadDate").value = today();

@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const fs = require("fs");
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const express = require("express");
@@ -9,6 +10,15 @@ const port = process.env.PORT || 10000;
 const stateId = process.env.STATE_ID || "control-muebles-resistencia";
 const appPassword = process.env.APP_PASSWORD || "";
 const sessionToken = crypto.randomBytes(32).toString("hex");
+const branches = {
+  "el-colorado": "El Colorado",
+  "laguna-blanca": "Laguna Blanca",
+  pirane: "Pirane",
+  clorinda: "Clorinda",
+  fontana: "Fontana",
+  resistencia: "Resistencia",
+};
+const defaultBranch = "resistencia";
 
 const pool = process.env.DATABASE_URL
   ? new Pool({
@@ -19,6 +29,15 @@ const pool = process.env.DATABASE_URL
 
 app.use(express.json({ limit: "5mb" }));
 app.use(cookieParser());
+
+app.get("/app.js", (request, response) => {
+  response.type("application/javascript");
+  const appScript = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+  const hotfixPath = path.join(__dirname, "hotfix-cristina.js");
+  const hotfixScript = fs.existsSync(hotfixPath) ? fs.readFileSync(hotfixPath, "utf8") : "";
+  response.send(`${appScript}\n\n${hotfixScript}`);
+});
+
 app.use(express.static(__dirname));
 
 function isAuthenticated(request) {
@@ -30,13 +49,18 @@ function requireAuth(request, response, next) {
   return response.status(401).json({ error: "No autorizado" });
 }
 
+function normalizeBranch(branch) {
+  const value = String(branch || defaultBranch).toLowerCase();
+  return branches[value] ? value : defaultBranch;
+}
+
 function selectedStateId(request) {
-  const branch = String(request.query.branch || request.body.branch || "resistencia").toLowerCase();
-  return branch === "formosa" ? "control-muebles-formosa" : stateId;
+  return stateIdFromBranch(request.query.branch || request.body.branch);
 }
 
 function stateIdFromBranch(branch) {
-  return String(branch).toLowerCase() === "formosa" ? "control-muebles-formosa" : stateId;
+  const normalized = normalizeBranch(branch);
+  return normalized === defaultBranch ? stateId : `control-muebles-${normalized}`;
 }
 
 function emptyState() {
@@ -116,8 +140,9 @@ app.put("/api/state", requireAuth, async (request, response) => {
 
 app.post("/api/dispatch", requireAuth, async (request, response) => {
   if (!pool) return response.status(500).json({ error: "Falta DATABASE_URL" });
-  const from = String(request.body.from || "").toLowerCase() === "formosa" ? "formosa" : "resistencia";
-  const to = from === "formosa" ? "resistencia" : "formosa";
+  const from = normalizeBranch(request.body.from);
+  const to = normalizeBranch(request.body.to);
+  if (from === to) return response.status(400).json({ error: "Selecciona una localidad de destino distinta al origen" });
   const lines = Array.isArray(request.body.lines) ? request.body.lines : [];
   if (!lines.length) return response.status(400).json({ error: "Agrega al menos un mueble" });
 
