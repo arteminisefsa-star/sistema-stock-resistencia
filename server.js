@@ -15,6 +15,7 @@ const branches = {
   "laguna-blanca": "Laguna Blanca",
   pirane: "Pirane",
   clorinda: "Clorinda",
+  formosa: "Formosa",
   fontana: "Fontana",
   resistencia: "Resistencia",
 };
