@@ -342,6 +342,8 @@ function renderSelects() {
   fillSelect("#tripOrderFurniture", state.furniture, "Seleccionar mueble");
   fillSelect("#tripRetiredFurniture", state.furniture, "Seleccionar mueble retirado");
   fillSelect("#tripRetiredSeller", state.sellers || [], "Seleccionar vendedor");
+  fillSelect("#retouchFurniture", state.furniture, "Seleccionar mueble");
+  fillSelect("#retouchSeller", state.sellers || [], "Sin vendedor", null, true);
   fillSelect("#dispatchFurniture", state.furniture, "Seleccionar mueble");
   fillSelect("#saleFurniture", state.furniture, "Seleccionar mueble");
   fillSelect("#saleLoad", state.loads, "Seleccionar salida", formatLoadOption);
@@ -1246,6 +1248,29 @@ document.querySelector("#addTripRetired").addEventListener("click", () => {
   renderTripRetiredLines();
 });
 
+document.querySelector("#retouchForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const furniture = byId("furniture", document.querySelector("#retouchFurniture").value);
+  const sellerId = document.querySelector("#retouchSeller").value;
+  const seller = (state.sellers || []).find((item) => item.id === sellerId);
+  const qty = Number(document.querySelector("#retouchQty").value);
+  if (!furniture || qty <= 0) return alert("Selecciona mueble y cantidad.");
+  state.retiredStock.push({
+    id: uid(),
+    date: document.querySelector("#retouchDate").value,
+    loadId: "",
+    driverId: "",
+    furnitureId: furniture.id,
+    name: furniture.name,
+    sellerId: seller ? seller.id : "",
+    sellerName: seller ? seller.name : "",
+    qty,
+  });
+  resetForm("#retouchForm");
+  document.querySelector("#retouchDate").value = today();
+  render();
+});
+
 document.querySelector("#addDispatchLine").addEventListener("click", () => {
   const furnitureId = document.querySelector("#dispatchFurniture").value;
   const qty = Number(document.querySelector("#dispatchQty").value);
@@ -1580,6 +1605,7 @@ async function initApp() {
   document.querySelector("#loadDate").value = today();
   document.querySelector("#tripDate").value = today();
   document.querySelector("#tripCloseDate").value = today();
+  document.querySelector("#retouchDate").value = today();
   document.querySelector("#dispatchDate").value = today();
   document.querySelector("#saleDate").value = today();
   document.querySelector("#paymentDate").value = today();

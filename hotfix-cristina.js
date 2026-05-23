@@ -27,6 +27,23 @@
     if (branchSwitch) branchSwitch.value = validBranch(currentBranch);
   }
 
+  function ensureRetouchForm() {
+    if (document.querySelector("#retouchForm")) return document.querySelector("#retouchForm");
+    const section = document.querySelector("#retocados");
+    if (!section) return null;
+    section.insertAdjacentHTML(
+      "afterbegin",
+      `<form id="retouchForm" class="form-grid panel">
+          <label>Fecha <input required id="retouchDate" type="date" /></label>
+          <label>Mueble <select required id="retouchFurniture"></select></label>
+          <label>Vendedor <select id="retouchSeller"></select></label>
+          <label>Cantidad <input required id="retouchQty" type="number" min="1" step="1" /></label>
+          <button class="primary" type="submit">Agregar mueble para retocar</button>
+        </form>`
+    );
+    return document.querySelector("#retouchForm");
+  }
+
   function ensureDispatchDestinationSelect() {
     const dispatchTo = document.querySelector("#dispatchTo");
     if (!dispatchTo || dispatchTo.tagName === "SELECT") return document.querySelector("#dispatchTo");
@@ -112,6 +129,9 @@
   const oldRenderSelects = renderSelects;
   renderSelects = function () {
     oldRenderSelects();
+    ensureRetouchForm();
+    fillSelect("#retouchFurniture", state.furniture, "Seleccionar mueble");
+    fillSelect("#retouchSeller", state.sellers || [], "Sin vendedor", null, true);
     chooseFirstPending("#tripCloseLoad");
   };
 
@@ -344,5 +364,36 @@
 
   syncBranchControls();
   ensureDispatchDestinationSelect();
+  const retouchForm = ensureRetouchForm();
+  if (retouchForm) {
+    document.querySelector("#retouchDate").value = today();
+    retouchForm.addEventListener(
+      "submit",
+      (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const furniture = byId("furniture", document.querySelector("#retouchFurniture").value);
+        const sellerId = document.querySelector("#retouchSeller").value;
+        const seller = (state.sellers || []).find((item) => item.id === sellerId);
+        const qty = Number(document.querySelector("#retouchQty").value);
+        if (!furniture || qty <= 0) return alert("Selecciona mueble y cantidad.");
+        state.retiredStock.push({
+          id: uid(),
+          date: document.querySelector("#retouchDate").value,
+          loadId: "",
+          driverId: "",
+          furnitureId: furniture.id,
+          name: furniture.name,
+          sellerId: seller ? seller.id : "",
+          sellerName: seller ? seller.name : "",
+          qty,
+        });
+        resetForm("#retouchForm");
+        document.querySelector("#retouchDate").value = today();
+        render();
+      },
+      true
+    );
+  }
   render();
 })();

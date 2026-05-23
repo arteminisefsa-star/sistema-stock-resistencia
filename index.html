@@ -272,6 +272,13 @@
       </section>
 
       <section id="retocados" class="view">
+        <form id="retouchForm" class="form-grid panel">
+          <label>Fecha <input required id="retouchDate" type="date" /></label>
+          <label>Mueble <select required id="retouchFurniture"></select></label>
+          <label>Vendedor <select id="retouchSeller"></select></label>
+          <label>Cantidad <input required id="retouchQty" type="number" min="1" step="1" /></label>
+          <button class="primary" type="submit">Agregar mueble para retocar</button>
+        </form>
         <div class="panel">
           <div class="panel-title"><h3>Muebles retirados para retocar</h3></div>
           <div id="retouchCards" class="cards"></div>
