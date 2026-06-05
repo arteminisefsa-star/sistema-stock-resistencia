@@ -202,7 +202,7 @@
               <span>Volvio<strong>${returned.reduce((sum, item) => sum + item.qty, 0)}</strong></span>
               <span>Entrego<strong>${money(paid)}</strong></span>
             </div>
-            ${closed ? "" : `<div class="trip-actions"><button class="small" type="button" onclick="prepareTripClose('${load.id}')">Cerrar viaje</button><button class="small" type="button" onclick="editTrip('${load.id}')">Editar salida</button><button class="small danger" type="button" onclick="deleteTrip('${load.id}')">Eliminar viaje</button></div>`}
+            <div class="trip-actions">${closed ? "" : `<button class="small" type="button" onclick="prepareTripClose('${load.id}')">Cerrar viaje</button>`}<button class="small" type="button" onclick="editTrip('${load.id}')">Editar salida</button>${closed ? "" : `<button class="small danger" type="button" onclick="deleteTrip('${load.id}')">Eliminar viaje</button>`}</div>
           </article>`;
           })
           .join("")
@@ -367,6 +367,48 @@
         setSyncStatus("Error al guardar despacho.");
         console.error(error);
       }
+    },
+    true
+  );
+
+  editTrip = function (id) {
+    const load = byId("loads", id);
+    if (!load) return;
+    document.querySelector("#tripId").value = load.id;
+    document.querySelector("#tripDate").value = load.date;
+    document.querySelector("#tripDriver").value = load.driverId;
+    document.querySelector("#tripNote").value = load.note || "";
+    currentTripLines = load.items.map((line) => ({ ...line }));
+    currentTripOrders = (load.orders || []).map((line) => ({ ...line }));
+    document.querySelector("#viajes").scrollIntoView({ behavior: "smooth", block: "start" });
+    renderTripLines();
+  };
+
+  document.querySelector("#tripForm").addEventListener(
+    "submit",
+    (event) => {
+      const old = byId("loads", document.querySelector("#tripId").value);
+      if (!old || !loadIsClosed(old.id)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!currentTripLines.length && !currentTripOrders.length) return alert("Agrega al menos un mueble o pedido.");
+      reverseStockDeltaFromLoad(old);
+      const total =
+        currentTripLines.reduce((sum, line) => sum + line.qty, 0) +
+        currentTripOrders.reduce((sum, line) => sum + line.qty, 0);
+      const load = {
+        ...old,
+        date: document.querySelector("#tripDate").value,
+        driverId: document.querySelector("#tripDriver").value,
+        note: document.querySelector("#tripNote").value.trim(),
+        items: currentTripLines.map((line) => ({ ...line })),
+        orders: currentTripOrders.map((line) => ({ ...line })),
+        total,
+      };
+      stockDeltaFromLoad(load);
+      state.loads = state.loads.map((entry) => (entry.id === old.id ? load : entry));
+      resetTripForm();
+      render();
     },
     true
   );

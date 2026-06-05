@@ -635,15 +635,11 @@ function renderTrips() {
               <span>Volvio<strong>${returned.reduce((sum, item) => sum + item.qty, 0)}</strong></span>
               <span>Entrego<strong>${money(paid)}</strong></span>
             </div>
-            ${
-              closed
-                ? ""
-                : `<div class="trip-actions">
-                    <button class="small" type="button" onclick="prepareTripClose('${load.id}')">Cerrar viaje</button>
-                    <button class="small" type="button" onclick="editTrip('${load.id}')">Editar salida</button>
-                    <button class="small danger" type="button" onclick="deleteTrip('${load.id}')">Eliminar viaje</button>
-                  </div>`
-            }
+            <div class="trip-actions">
+              ${closed ? "" : `<button class="small" type="button" onclick="prepareTripClose('${load.id}')">Cerrar viaje</button>`}
+              <button class="small" type="button" onclick="editTrip('${load.id}')">Editar salida</button>
+              ${closed ? "" : `<button class="small danger" type="button" onclick="deleteTrip('${load.id}')">Eliminar viaje</button>`}
+            </div>
           </article>`;
         })
         .join("")
@@ -1022,10 +1018,6 @@ function resetTripForm() {
 function editTrip(id) {
   const load = byId("loads", id);
   if (!load) return;
-  if (loadIsClosed(load.id) || existingLoadTransactions(load.id).length) {
-    alert("Solo se pueden editar salidas pendientes.");
-    return;
-  }
   document.querySelector("#tripId").value = load.id;
   document.querySelector("#tripDate").value = load.date;
   document.querySelector("#tripDriver").value = load.driverId;
@@ -1306,7 +1298,6 @@ document.querySelector("#tripForm").addEventListener("submit", (event) => {
   if (!currentTripLines.length && !currentTripOrders.length) return alert("Agrega al menos un mueble o pedido.");
   const id = document.querySelector("#tripId").value || uid();
   const old = byId("loads", id);
-  if (old && (loadIsClosed(old.id) || existingLoadTransactions(old.id).length)) return alert("Solo se pueden editar salidas pendientes.");
   if (old) reverseStockDeltaFromLoad(old);
   const total = currentTripLines.reduce((sum, line) => {
     return sum + line.qty;
@@ -1319,6 +1310,8 @@ document.querySelector("#tripForm").addEventListener("submit", (event) => {
     items: currentTripLines.map((line) => ({ ...line })),
     orders: currentTripOrders.map((line) => ({ ...line })),
     total,
+    closedAt: old ? old.closedAt : undefined,
+    closedDate: old ? old.closedDate : undefined,
   };
   stockDeltaFromLoad(load);
   state.loads = old ? state.loads.map((entry) => (entry.id === id ? load : entry)) : [...state.loads, load];
