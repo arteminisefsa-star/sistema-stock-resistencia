@@ -27,6 +27,15 @@
     if (branchSwitch) branchSwitch.value = validBranch(currentBranch);
   }
 
+  function ensureForceSyncButton() {
+    let button = document.querySelector("#forceSync");
+    if (button) return button;
+    const branchSwitch = document.querySelector("#branchSwitch");
+    if (!branchSwitch) return null;
+    branchSwitch.insertAdjacentHTML("afterend", `<button class="small" id="forceSync" type="button">Sincronizar</button>`);
+    return document.querySelector("#forceSync");
+  }
+
   function ensureRetouchForm() {
     if (document.querySelector("#retouchForm")) return document.querySelector("#retouchForm");
     const section = document.querySelector("#retocados");
@@ -361,6 +370,33 @@
     },
     true
   );
+
+  const syncButton = ensureForceSyncButton();
+  if (syncButton) {
+    syncButton.addEventListener(
+      "click",
+      async (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const confirmed = confirm(`Subir los datos actuales de ${branches[currentBranch]} a la nube para que aparezcan en otras computadoras?`);
+        if (!confirmed) return;
+        setSyncStatus("Sincronizando manualmente...");
+        try {
+          await apiRequest("/api/state", {
+            method: "PUT",
+            body: JSON.stringify({ branch: currentBranch, data: state }),
+          });
+          await loadServerState();
+          alert("Sincronizado online. En la otra computadora, actualiza la pagina y elegi la misma localidad.");
+        } catch (error) {
+          setSyncStatus("Error al sincronizar manualmente.");
+          alert("No se pudo sincronizar con la nube. Revisa conexion, sesion o servidor.");
+          console.error(error);
+        }
+      },
+      true
+    );
+  }
 
   syncBranchControls();
   ensureDispatchDestinationSelect();

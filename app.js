@@ -114,10 +114,22 @@ async function saveServerState() {
       body: JSON.stringify({ branch: currentBranch, data: state }),
     });
     setSyncStatus("Sincronizado online");
+    return true;
   } catch (error) {
     setSyncStatus("Error al guardar online. Quedo respaldo local.");
     console.error(error);
+    return false;
   }
+}
+
+async function forceSyncCurrentState() {
+  const confirmed = confirm(`Subir los datos actuales de ${branches[currentBranch]} a la nube para que aparezcan en otras computadoras?`);
+  if (!confirmed) return;
+  setSyncStatus("Sincronizando manualmente...");
+  const ok = await saveServerState();
+  if (!ok) return alert("No se pudo sincronizar con la nube. Revisa conexion, sesion o servidor.");
+  await loadServerState();
+  alert("Sincronizado online. En la otra computadora, actualiza la pagina y elegi la misma localidad.");
 }
 
 async function switchBranch(branch) {
@@ -1104,6 +1116,7 @@ document.querySelector("#filterToggle").addEventListener("click", () => {
 document.querySelector("#filterClose").addEventListener("click", () => {
   document.querySelector(".topbar").classList.remove("filters-open");
 });
+document.querySelector("#forceSync").addEventListener("click", forceSyncCurrentState);
 document.querySelector("#branchSwitch").addEventListener("change", (event) => {
   switchBranch(event.target.value);
 });
